@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
   <!-- Ambient background glow elements -->
@@ -32,23 +32,7 @@
         </div>
       </div>
 
-      <!-- Mode Selector Pills -->
-      <nav class="mode-nav" aria-label="Game Modes">
-        <button class="mode-btn active" data-mode="daily" id="modeDailyBtn">
-          <span class="mode-icon">📅</span>
-          <span>Daily 3-Pack</span>
-        </button>
-        <button class="mode-btn" data-mode="blitz" id="modeBlitzBtn">
-          <span class="mode-icon">⚡</span>
-          <span>Reverse Blitz</span>
-        </button>
-        <button class="mode-btn" data-mode="practice" id="modePracticeBtn">
-          <span class="mode-icon">🎯</span>
-          <span>Free Play</span>
-        </button>
-      </nav>
-
-      <!-- Utility Actions -->
+      <!-- Header Actions -->
       <div class="header-actions">
         <button class="icon-btn" id="soundToggleBtn" title="Toggle Sound" aria-label="Toggle Sound">
           <span id="soundIcon">🔊</span>
@@ -101,11 +85,11 @@
         </div>
       </section>
 
-      <!-- Instructions Banner (dynamic per mode) -->
+      <!-- Instructions Banner -->
       <div class="mode-banner" id="modeBanner">
         <div class="mode-banner-icon" id="modeBannerIcon">💡</div>
         <div class="mode-banner-text" id="modeBannerText">
-          Guess the secret target word! Wrong guesses unlock another prohibited clue.
+          Deduce 3 secret target words! Wrong guesses unlock another clue. If you guess a taboo word, it reveals with no guess wasted!
         </div>
       </div>
 
@@ -119,6 +103,17 @@
           <!-- Clue cards injected dynamically -->
         </div>
       </section>
+
+      <!-- Word Length & Starting Letter Hint Box (Appears after all clues revealed) -->
+      <div class="word-hint-box" id="wordHintBox">
+        <div class="word-hint-header">
+          <span class="hint-badge">ALL CLUES REVEALED</span>
+          <span class="hint-title">Target Word Letters & Length:</span>
+        </div>
+        <div class="word-dashes-display" id="wordDashesDisplay">
+          <!-- Dynamically populated e.g. C _ _ _ _ _ -->
+        </div>
+      </div>
 
       <!-- Guess Input & Action Controls -->
       <section class="guess-section">
@@ -142,7 +137,7 @@
         </form>
 
         <!-- Secondary Gameplay Controls -->
-        <div class="action-bar">
+        <div class="action-bar" id="actionBar">
           <button class="hint-action-btn" id="revealClueBtn">
             <span class="btn-icon">🔓</span>
             <span>Reveal Another Clue</span>
@@ -150,6 +145,23 @@
           </button>
           <button class="skip-action-btn" id="skipWordBtn" title="Give up on this word and reveal it">
             <span>Skip / Reveal Answer</span>
+          </button>
+        </div>
+
+        <!-- In-board Revealed Answer & Round Intermission Banner -->
+        <div class="revealed-answer-banner" id="revealedAnswerBanner">
+          <div class="revealed-answer-header">
+            <span class="revealed-tag" id="revealedTag">ANSWER REVEALED</span>
+            <span class="revealed-penalty-note" id="revealedPenaltyNote">+15s penalty added</span>
+          </div>
+          <div class="revealed-answer-body">
+            <span class="revealed-lead" id="revealedLead">The secret word was:</span>
+            <span class="revealed-target-word" id="revealedTargetWord">CANADA</span>
+            <div class="revealed-stats" id="revealedStats"></div>
+          </div>
+          <button class="btn-primary proceed-btn" id="proceedNextWordBtn">
+            <span id="proceedBtnText">Continue to Next Word</span>
+            <span class="btn-arrow">&rarr;</span>
           </button>
         </div>
 
@@ -226,11 +238,30 @@
 
       <!-- Modal Footer Buttons -->
       <div class="modal-buttons">
-        <button class="btn-primary" id="playAgainBtn">
-          <span>Play Another (Practice)</span>
+        <button class="btn-primary" id="copyShareModalBtn">
+          <span>📋 Share Score</span>
         </button>
         <button class="btn-secondary" id="closeVictoryModalBtn">
           <span>Review Board</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Skip / Reveal Answer Confirmation Modal -->
+  <div class="modal-backdrop" id="skipModal" aria-hidden="true" role="dialog">
+    <div class="modal-card skip-modal-card">
+      <div class="skip-modal-icon">🏳️</div>
+      <h2>Give Up on this Word?</h2>
+      <p class="skip-modal-desc">
+        Revealing the answer will add a <strong style="color: #fbbf24;">+15s penalty</strong> to your time and mark this word as skipped on your daily scorecard.
+      </p>
+      <div class="modal-buttons" style="margin-top: 1.25rem;">
+        <button class="btn-secondary" id="cancelSkipBtn">
+          Keep Guessing
+        </button>
+        <button class="btn-danger" id="confirmSkipBtn">
+          Reveal Answer (+15s)
         </button>
       </div>
     </div>
@@ -254,15 +285,15 @@
         <div class="help-step">
           <div class="step-badge">2</div>
           <div>
-            <h3>Progressive Clues (Daily Mode)</h3>
-            <p>You start each word with only <strong>2 clues revealed</strong>. Every wrong guess unlocks another prohibited clue card. You can also press <em>"Reveal Another Clue"</em> at any time for a 5-second timer penalty.</p>
+            <h3>Progressive Clues & Free Taboo Reveals</h3>
+            <p>You start each word with <strong>2 clues revealed</strong>. Every wrong guess unlocks another prohibited clue card. If you happen to guess one of the secret taboo words itself, it instantly flips open as a <em>free clue reveal</em> without wasting a guess!</p>
           </div>
         </div>
         <div class="help-step">
           <div class="step-badge">3</div>
           <div>
-            <h3>Reverse Blitz Mode</h3>
-            <p>A fast-paced decreasing difficulty challenge! Round 1 gives you <strong>all clues</strong>, Round 2 gives you <strong>4 clues</strong>, and Round 3 gives you only <strong>2 clues</strong>. Race against the clock!</p>
+            <h3>Length & Starting Letter Dash Hint</h3>
+            <p>If all taboo clues are unlocked and you're still working through the puzzle, an interactive <strong>letter dash hint</strong> appears displaying the exact length of the target word along with its starting letter(s).</p>
           </div>
         </div>
         <div class="help-step">

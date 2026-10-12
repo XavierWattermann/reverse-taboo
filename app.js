@@ -1,6 +1,7 @@
 /**
  * REVERSE TABOO — Main Application Engine
- * Dynamic clue reveals, fuzzy typo forgiveness, dual game modes, procedural audio & statistics
+ * Dynamic clue reveals, taboo guess interception, letter dash hints,
+ * zero-duplicate daily permutation, procedural audio & statistics
  */
 
 (() => {
@@ -76,7 +77,7 @@
       this.enabled = !this.enabled;
       localStorage.setItem('rt_sound_enabled', this.enabled);
       if (this.enabled) {
-        this.playCorrect(0.1);
+        this.playCorrect();
       }
       return this.enabled;
     }
@@ -98,9 +99,7 @@
         gain.connect(this.ctx.destination);
         osc.start();
         osc.stop(this.ctx.currentTime + duration);
-      } catch (e) {
-        // audio context blocked or unsupported
-      }
+      } catch (e) {}
     }
 
     playFlip() {
@@ -134,26 +133,23 @@
 
     playWrong() {
       if (!this.enabled) return;
-      // Dull low thud
       this.playTone(140, 'sawtooth', 0.2, 0.1);
       setTimeout(() => this.playTone(110, 'sawtooth', 0.25, 0.08), 80);
     }
 
     playClose() {
       if (!this.enabled) return;
-      // Playful curious double tone
       this.playTone(440, 'sine', 0.1, 0.1);
       setTimeout(() => this.playTone(554.37, 'sine', 0.12, 0.1), 90);
     }
 
     playWin() {
       if (!this.enabled) return;
-      // Fanfare chord progression
       const chords = [
-        [523.25, 659.25], // C, E
-        [659.25, 783.99], // E, G
-        [783.99, 1046.5], // G, C6
-        [1046.5, 1318.51] // C6, E6
+        [523.25, 659.25],
+        [659.25, 783.99],
+        [783.99, 1046.5],
+        [1046.5, 1318.51]
       ];
       chords.forEach((pair, i) => {
         setTimeout(() => {
@@ -167,26 +163,20 @@
   const sound = new SoundEngine();
 
   // =========================================================================
-  // 3. FUZZY MATCHING & ALIAS ENGINE (Typo forgiveness & normalization)
+  // 3. FUZZY MATCHING & ALIAS ENGINE
   // =========================================================================
   class FuzzyMatcher {
-    /**
-     * Cleans string: lowercases, removes diacritics, strips punctuation, collapses spaces
-     */
     static normalize(str) {
       if (!str) return '';
       return str
         .toLowerCase()
         .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '') // remove accents (e.g. é -> e)
-        .replace(/[^a-z0-9\s]/g, ' ')   // replace symbols with spaces
-        .replace(/\s+/g, ' ')           // collapse multiple spaces
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
         .trim();
     }
 
-    /**
-     * Extracts intelligent alternate acceptable answers for a target word
-     */
     static generateAliases(rawWord) {
       const aliases = new Set();
       const normRaw = this.normalize(rawWord);
@@ -201,25 +191,24 @@
       const parensMatch = rawWord.match(/\(([^)]+)\)/);
       if (parensMatch && parensMatch[1]) {
         const insideParens = this.normalize(parensMatch[1]);
-        // Only add if it's a substantive acronym/word, not a generic qualifier like "(band)", "(film)"
         const genericQualifiers = ['band', 'film', 'game', 'tv series', 'series', 'rapper', 'album', 'city', 'song'];
         if (!genericQualifiers.includes(insideParens) && insideParens.length >= 2) {
           aliases.add(insideParens);
         }
       }
 
-      // 3. Strip leading articles: "The Simpsons" -> "Simpsons", "A Christmas Carol" -> "Christmas Carol"
+      // 3. Strip leading articles: "The Simpsons" -> "Simpsons"
       for (const alias of Array.from(aliases)) {
         if (alias.startsWith('the ')) aliases.add(alias.slice(4));
         if (alias.startsWith('a ')) aliases.add(alias.slice(2));
         if (alias.startsWith('an ')) aliases.add(alias.slice(3));
       }
 
-      // 4. Common specific mappings for known formats
+      // 4. Common specific mappings
       if (rawWord.includes('50 Cent')) aliases.add('fifty cent');
       if (rawWord.includes('Martin Luther King')) aliases.add('mlk');
 
-      // 5. Significant surname or distinctive key token for names (e.g. "Albert Einstein" -> "einstein")
+      // 5. Significant surname or distinctive key token
       const words = normWithoutParens.split(' ');
       if (words.length >= 2 && words.length <= 4) {
         const lastWord = words[words.length - 1];
@@ -232,41 +221,54 @@
         if (lastWord.length >= 4 && !genericExclusions.includes(lastWord)) {
           aliases.add(lastWord);
         }
-        // First name for famous mononyms like "Sherlock", "Napoleon", "Cleopatra"
         const firstWord = words[0];
         if (['sherlock', 'napoleon', 'beyonce', 'adele', 'madonna', 'rihanna', 'elvis'].includes(firstWord)) {
           aliases.add(firstWord);
         }
       }
 
+      // 6. Plural & Singular variants for clean word matching (e.g. gem <-> gems)
+      const normSingle = normWithoutParens;
+      if (normSingle.length >= 3) {
+        if (!normSingle.endsWith('s')) {
+          aliases.add(normSingle + 's');
+          if (normSingle.endsWith('ch') || normSingle.endsWith('sh') || normSingle.endsWith('x') || normSingle.endsWith('z')) {
+            aliases.add(normSingle + 'es');
+          }
+          if (normSingle.endsWith('y') && !/[aeiou]y$/.test(normSingle)) {
+            aliases.add(normSingle.slice(0, -1) + 'ies');
+          }
+        } else {
+          if (normSingle.endsWith('ies') && normSingle.length > 4) {
+            aliases.add(normSingle.slice(0, -3) + 'y');
+          } else if (normSingle.endsWith('es') && normSingle.length > 4) {
+            aliases.add(normSingle.slice(0, -2));
+          } else if (normSingle.endsWith('s') && !normSingle.endsWith('ss')) {
+            aliases.add(normSingle.slice(0, -1));
+          }
+        }
+      }
+
       return Array.from(aliases);
     }
 
-    /**
-     * Levenshtein edit distance with transposition (Damerau-Levenshtein)
-     */
     static editDistance(s1, s2) {
       const len1 = s1.length;
       const len2 = s2.length;
       const d = [];
 
-      for (let i = 0; i <= len1; i++) {
-        d[i] = [i];
-      }
-      for (let j = 0; j <= len2; j++) {
-        d[0][j] = j;
-      }
+      for (let i = 0; i <= len1; i++) d[i] = [i];
+      for (let j = 0; j <= len2; j++) d[0][j] = j;
 
       for (let i = 1; i <= len1; i++) {
         for (let j = 1; j <= len2; j++) {
           const cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
           d[i][j] = Math.min(
-            d[i - 1][j] + 1,       // deletion
-            d[i][j - 1] + 1,       // insertion
-            d[i - 1][j - 1] + cost // substitution
+            d[i - 1][j] + 1,
+            d[i][j - 1] + 1,
+            d[i - 1][j - 1] + cost
           );
 
-          // Transposition
           if (i > 1 && j > 1 && s1[i - 1] === s2[j - 2] && s1[i - 2] === s2[j - 1]) {
             d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
           }
@@ -276,16 +278,12 @@
       return d[len1][len2];
     }
 
-    /**
-     * Evaluates user guess against target word
-     */
     static evaluateGuess(userGuess, targetWord) {
       const cleanGuess = this.normalize(userGuess);
       if (!cleanGuess) return { isCorrect: false, isTypo: false, isClose: false, message: 'Please enter a guess.' };
 
       const aliases = this.generateAliases(targetWord);
 
-      // Check 1: Exact normalized match
       if (aliases.includes(cleanGuess)) {
         return { isCorrect: true, isTypo: false, isClose: false, targetWord };
       }
@@ -304,10 +302,6 @@
       const aliasLen = closestAlias.length;
       const similarity = 1 - (bestDistance / Math.max(aliasLen, cleanGuess.length));
 
-      // Typo Forgiveness Thresholds:
-      // Short words (3-4 chars): distance 1 allowed only if similarity >= 0.75
-      // Medium words (5-7 chars): distance 1 allowed
-      // Long words (8+ chars): distance <= 2 or similarity >= 0.85 allowed
       let allowedTypoDist = 0;
       if (aliasLen >= 8) allowedTypoDist = 2;
       else if (aliasLen >= 5) allowedTypoDist = 1;
@@ -323,7 +317,6 @@
         };
       }
 
-      // Close / Near-miss nudge (distance is small but outside forgiving range)
       if (bestDistance <= 3 || (aliasLen >= 8 && bestDistance <= 4)) {
         return {
           isCorrect: false,
@@ -343,30 +336,28 @@
   }
 
   // =========================================================================
-  // 4. GAME STATE & CONTROLLER
+  // 4. GAME CONTROLLER
   // =========================================================================
   class ReverseTabooGame {
     constructor() {
-      this.mode = 'daily'; // 'daily' | 'blitz' | 'practice'
-      this.currentRoundIndex = 0; // 0, 1, 2
-      this.wordsInGame = []; // 3 words for the active session
+      this.currentRoundIndex = 0;
+      this.wordsInGame = [];
       this.currentWord = null;
 
       // Active word state
-      this.revealedClues = []; // indices of revealed clues
-      this.guesses = []; // list of string guesses for current word
+      this.revealedClues = [];
+      this.guesses = [];
       this.isWordSolved = false;
 
       // Overall game metrics
-      this.startTime = null;
-      this.elapsedMs = 0;
-      this.penaltyMs = 0;
+      this.totalElapsedMs = 0;
+      this.currentRunStart = null;
       this.timerInterval = null;
       this.isGameActive = false;
       this.isGameOver = false;
 
-      // Scorecard summary across the 3 words
       this.roundSummaries = [];
+      this.cachedPermutation = null;
 
       this.initDom();
       this.bindEvents();
@@ -376,9 +367,6 @@
     initDom() {
       this.dom = {
         puzzleIdBadge: document.getElementById('puzzleIdBadge'),
-        modeDailyBtn: document.getElementById('modeDailyBtn'),
-        modeBlitzBtn: document.getElementById('modeBlitzBtn'),
-        modePracticeBtn: document.getElementById('modePracticeBtn'),
         soundToggleBtn: document.getElementById('soundToggleBtn'),
         soundIcon: document.getElementById('soundIcon'),
         helpModalBtn: document.getElementById('helpModalBtn'),
@@ -393,19 +381,29 @@
         revealedCluesCount: document.getElementById('revealedCluesCount'),
         totalCluesCount: document.getElementById('totalCluesCount'),
         modeBanner: document.getElementById('modeBanner'),
-        modeBannerIcon: document.getElementById('modeBannerIcon'),
-        modeBannerText: document.getElementById('modeBannerText'),
         cluesCaption: document.getElementById('cluesCaption'),
         cluesGrid: document.getElementById('cluesGrid'),
+        wordHintBox: document.getElementById('wordHintBox'),
+        wordDashesDisplay: document.getElementById('wordDashesDisplay'),
         guessForm: document.getElementById('guessForm'),
         guessInput: document.getElementById('guessInput'),
         submitGuessBtn: document.getElementById('submitGuessBtn'),
         inputWrapper: document.querySelector('.input-wrapper'),
         revealClueBtn: document.getElementById('revealClueBtn'),
-        hintPenaltyTag: document.getElementById('hintPenaltyTag'),
         skipWordBtn: document.getElementById('skipWordBtn'),
+        actionBar: document.getElementById('actionBar'),
+        revealedAnswerBanner: document.getElementById('revealedAnswerBanner'),
+        revealedTag: document.getElementById('revealedTag'),
+        revealedPenaltyNote: document.getElementById('revealedPenaltyNote'),
+        revealedLead: document.getElementById('revealedLead'),
+        revealedTargetWord: document.getElementById('revealedTargetWord'),
+        revealedStats: document.getElementById('revealedStats'),
+        proceedNextWordBtn: document.getElementById('proceedNextWordBtn'),
+        proceedBtnText: document.getElementById('proceedBtnText'),
+        skipModal: document.getElementById('skipModal'),
+        cancelSkipBtn: document.getElementById('cancelSkipBtn'),
+        confirmSkipBtn: document.getElementById('confirmSkipBtn'),
         feedbackToast: document.getElementById('feedbackToast'),
-        historyContainer: document.getElementById('historyContainer'),
         historyChips: document.getElementById('historyChips'),
         datasetStatus: document.getElementById('datasetStatus'),
         
@@ -418,8 +416,8 @@
         solvedWordsList: document.getElementById('solvedWordsList'),
         shareTextPreview: document.getElementById('shareTextPreview'),
         copyShareBtn: document.getElementById('copyShareBtn'),
+        copyShareModalBtn: document.getElementById('copyShareModalBtn'),
         copiedBadge: document.getElementById('copiedBadge'),
-        playAgainBtn: document.getElementById('playAgainBtn'),
         closeVictoryModalBtn: document.getElementById('closeVictoryModalBtn'),
         
         helpModal: document.getElementById('helpModal'),
@@ -440,11 +438,6 @@
     }
 
     bindEvents() {
-      // Mode selector
-      this.dom.modeDailyBtn.addEventListener('click', () => this.switchMode('daily'));
-      this.dom.modeBlitzBtn.addEventListener('click', () => this.switchMode('blitz'));
-      this.dom.modePracticeBtn.addEventListener('click', () => this.switchMode('practice'));
-
       // Sound toggle
       this.dom.soundToggleBtn.addEventListener('click', () => {
         sound.toggle();
@@ -464,10 +457,10 @@
       this.dom.closeStatsBtn.addEventListener('click', () => this.closeModal(this.dom.statsModal));
 
       this.dom.closeVictoryModalBtn.addEventListener('click', () => this.closeModal(this.dom.victoryModal));
-      this.dom.playAgainBtn.addEventListener('click', () => {
-        this.closeModal(this.dom.victoryModal);
-        this.switchMode('practice');
-      });
+      
+      if (this.dom.copyShareModalBtn) {
+        this.dom.copyShareModalBtn.addEventListener('click', () => this.copyShareResult());
+      }
 
       // Guess submission
       this.dom.guessForm.addEventListener('submit', (e) => {
@@ -478,8 +471,11 @@
       // Reveal Clue Action
       this.dom.revealClueBtn.addEventListener('click', () => this.handleManualClueReveal());
 
-      // Skip word
-      this.dom.skipWordBtn.addEventListener('click', () => this.handleSkipWord());
+      // Skip word confirmation & proceed flow (No browser alerts!)
+      this.dom.skipWordBtn.addEventListener('click', () => this.openSkipModal());
+      this.dom.cancelSkipBtn.addEventListener('click', () => this.closeSkipModal());
+      this.dom.confirmSkipBtn.addEventListener('click', () => this.executeSkipWord());
+      this.dom.proceedNextWordBtn.addEventListener('click', () => this.proceedAfterReveal());
 
       // Share button
       this.dom.copyShareBtn.addEventListener('click', () => this.copyShareResult());
@@ -521,7 +517,7 @@
           }
         }
       } catch (err) {
-        console.info('Loaded with bundled curated word bank (standalone mode)');
+        console.info('Loaded with bundled curated word bank');
         this.dom.datasetStatus.innerHTML = `
           <span class="status-indicator" style="background:#38bdf8;"></span> 
           Offline Mode: Curated word bank ready
@@ -532,85 +528,56 @@
     }
 
     // =========================================================================
-    // 5. WORD SELECTION & SEEDING (Daily deterministic vs Random)
+    // 5. DETERMINISTIC ZERO-DUPLICATE DAILY SELECTION
     // =========================================================================
+    getSeededPermutation(totalItems, seed = 20261012) {
+      const arr = Array.from({ length: totalItems }, (_, i) => i);
+      let s = seed;
+      function random() {
+        s |= 0; s = s + 0x6D2B79F5 | 0;
+        let t = Math.imul(s ^ s >>> 15, 1 | s);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      }
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
     getDailyWords() {
-      // Deterministic pseudo-random seed based on UTC date
       const today = new Date();
-      const dateStr = `${today.getUTCFullYear()}-${today.getUTCMonth() + 1}-${today.getUTCDate()}`;
-      
-      // Compute puzzle number (days since anchor date 2026-01-01)
       const anchor = new Date('2026-01-01');
       const diffDays = Math.max(1, Math.floor((today - anchor) / (1000 * 60 * 60 * 24)));
       this.dailyPuzzleNumber = diffDays;
       this.dom.puzzleIdBadge.textContent = `DAILY #${String(diffDays).padStart(3, '0')}`;
 
-      // Simple hash
-      let hash = 0;
-      for (let i = 0; i < dateStr.length; i++) {
-        hash = (hash << 5) - hash + dateStr.charCodeAt(i);
-        hash |= 0;
-      }
-      hash = Math.abs(hash);
-
       const poolLen = WORDS_POOL.length;
-      const idx1 = hash % poolLen;
-      const idx2 = (hash * 31 + 7) % poolLen;
-      const idx3 = (hash * 127 + 19) % poolLen;
+      if (!this.cachedPermutation || this.cachedPermutation.length !== poolLen) {
+        this.cachedPermutation = this.getSeededPermutation(poolLen, 20261012);
+      }
+
+      // Pick 3 consecutive unique words from the fixed permutation
+      const startIndex = ((diffDays - 1) * 3) % poolLen;
+      const idx1 = this.cachedPermutation[startIndex % poolLen];
+      const idx2 = this.cachedPermutation[(startIndex + 1) % poolLen];
+      const idx3 = this.cachedPermutation[(startIndex + 2) % poolLen];
 
       return [WORDS_POOL[idx1], WORDS_POOL[idx2], WORDS_POOL[idx3]];
     }
 
-    getRandomWords() {
-      const shuffled = [...WORDS_POOL].sort(() => 0.5 - Math.random());
-      return shuffled.slice(0, 3);
-    }
-
-    switchMode(newMode) {
-      this.mode = newMode;
-      this.dom.modeDailyBtn.classList.toggle('active', newMode === 'daily');
-      this.dom.modeBlitzBtn.classList.toggle('active', newMode === 'blitz');
-      this.dom.modePracticeBtn.classList.toggle('active', newMode === 'practice');
-
-      if (newMode === 'daily') {
-        this.dom.puzzleIdBadge.style.display = 'inline-block';
-        this.dom.modeBannerIcon.textContent = '📅';
-        this.dom.modeBannerText.textContent = 'Daily 3-Pack: Start with 2 clues. Wrong guesses unlock more prohibited words!';
-        this.dom.cluesCaption.textContent = 'Prohibited clues for Word ' + (this.currentRoundIndex + 1);
-        this.dom.hintPenaltyTag.textContent = '+5s penalty';
-      } else if (newMode === 'blitz') {
-        this.dom.puzzleIdBadge.textContent = 'SPEED BLITZ';
-        this.dom.modeBannerIcon.textContent = '⚡';
-        this.dom.modeBannerText.textContent = 'Reverse Blitz: Clues decrease every round! Word 1: All clues. Word 2: 4 clues. Word 3: 2 clues!';
-        this.dom.cluesCaption.textContent = 'Decreasing clue speed run!';
-        this.dom.hintPenaltyTag.textContent = '+10s penalty';
-      } else {
-        this.dom.puzzleIdBadge.textContent = 'FREE PLAY';
-        this.dom.modeBannerIcon.textContent = '🎯';
-        this.dom.modeBannerText.textContent = 'Casual Practice: Solve random taboo targets at your own pace.';
-        this.dom.cluesCaption.textContent = 'Sharpen your deduction instincts';
-        this.dom.hintPenaltyTag.textContent = '+5s penalty';
-      }
-
-      this.startNewGame();
-    }
-
     startNewGame() {
       this.stopTimer();
-      this.elapsedMs = 0;
-      this.penaltyMs = 0;
+      this.totalElapsedMs = 0;
+      this.currentRunStart = null;
       this.currentRoundIndex = 0;
       this.roundSummaries = [];
       this.isGameOver = false;
+      this.postHintGuesses = 0;
 
       this.dom.timerDisplay.textContent = '00:00.0';
-
-      if (this.mode === 'daily') {
-        this.wordsInGame = this.getDailyWords();
-      } else {
-        this.wordsInGame = this.getRandomWords();
-      }
-
+      this.wordsInGame = this.getDailyWords();
       this.loadWordForCurrentRound();
     }
 
@@ -618,6 +585,7 @@
       this.currentWord = this.wordsInGame[this.currentRoundIndex];
       this.guesses = [];
       this.isWordSolved = false;
+      this.postHintGuesses = 0;
 
       // Update stepper UI
       this.dom.stepChips.forEach((chip, i) => {
@@ -635,34 +603,33 @@
       this.dom.revealClueBtn.disabled = false;
       this.dom.guessInput.focus();
 
-      // Determine initial revealed clues based on mode
+      // Reset word length hint box & revealed answer banner
+      this.dom.wordHintBox.classList.remove('active');
+      this.dom.wordDashesDisplay.innerHTML = '';
+      if (this.dom.revealedAnswerBanner) {
+        this.dom.revealedAnswerBanner.classList.remove('active');
+      }
+      this.dom.guessForm.style.display = 'block';
+      this.dom.actionBar.style.display = 'flex';
+
+      // Start with 2 clues revealed
       const totalClues = this.currentWord.prohibited.length;
       this.dom.totalCluesCount.textContent = totalClues;
+      const initialCount = Math.min(2, totalClues);
+      this.revealedClues = Array.from({ length: initialCount }, (_, i) => i);
 
-      if (this.mode === 'blitz') {
-        if (this.currentRoundIndex === 0) {
-          // Word 1: All clues revealed
-          this.revealedClues = Array.from({ length: totalClues }, (_, i) => i);
-        } else if (this.currentRoundIndex === 1) {
-          // Word 2: 4 clues revealed
-          const count = Math.min(4, totalClues);
-          this.revealedClues = Array.from({ length: count }, (_, i) => i);
-        } else {
-          // Word 3: Only 2 clues revealed
-          const count = Math.min(2, totalClues);
-          this.revealedClues = Array.from({ length: count }, (_, i) => i);
-        }
-      } else {
-        // Daily & Practice: Start with 2 clues revealed
-        const initialCount = Math.min(2, totalClues);
-        this.revealedClues = Array.from({ length: initialCount }, (_, i) => i);
-      }
-
-      this.renderClues(false);
+      this.renderClues();
       this.updateCluesCounter();
     }
 
-    renderClues(animateNew = true) {
+    revealAllClues() {
+      const totalClues = this.currentWord.prohibited.length;
+      this.revealedClues = Array.from({ length: totalClues }, (_, i) => i);
+      this.renderClues();
+      this.updateCluesCounter();
+    }
+
+    renderClues() {
       const prohibited = this.currentWord.prohibited;
       this.dom.cluesGrid.innerHTML = '';
 
@@ -679,7 +646,7 @@
               <span class="clue-placeholder-label">Clue #${index + 1}</span>
             </div>
             <div class="clue-back">
-              <span class="clue-badge">Taboo #${index + 1}</span>
+              <span class="clue-badge" id="clueBadge-${index}">Taboo #${index + 1}</span>
               <span class="clue-text">${clueWord}</span>
             </div>
           </div>
@@ -703,33 +670,48 @@
     }
 
     // =========================================================================
-    // 6. TIMER ENGINE
+    // 6. TIMER ENGINE (Pauseable Stopwatch)
     // =========================================================================
     startTimerIfNeeded() {
-      if (this.isGameActive) return;
+      if (this.isGameActive || this.isGameOver) return;
       this.isGameActive = true;
-      this.startTime = performance.now() - this.elapsedMs;
+      this.currentRunStart = performance.now();
 
-      this.timerInterval = setInterval(() => {
-        if (!this.isGameActive) return;
-        this.elapsedMs = performance.now() - this.startTime + this.penaltyMs;
-        this.updateTimerDisplay();
-      }, 50);
+      if (!this.timerInterval) {
+        this.timerInterval = setInterval(() => {
+          if (!this.isGameActive) return;
+          this.updateTimerDisplay();
+        }, 50);
+      }
     }
 
     stopTimer() {
-      this.isGameActive = false;
+      if (this.isGameActive) {
+        if (this.currentRunStart !== null) {
+          this.totalElapsedMs += (performance.now() - this.currentRunStart);
+          this.currentRunStart = null;
+        }
+        this.isGameActive = false;
+      }
       if (this.timerInterval) {
         clearInterval(this.timerInterval);
         this.timerInterval = null;
       }
+      this.updateTimerDisplay();
     }
 
     addPenalty(seconds) {
-      this.penaltyMs += seconds * 1000;
-      this.elapsedMs += seconds * 1000;
+      this.totalElapsedMs += seconds * 1000;
       this.updateTimerDisplay();
       this.showToast(`+${seconds}s Penalty Added!`, 'error');
+    }
+
+    getElapsedMs() {
+      let total = this.totalElapsedMs;
+      if (this.isGameActive && this.currentRunStart !== null) {
+        total += (performance.now() - this.currentRunStart);
+      }
+      return total;
     }
 
     formatTime(ms) {
@@ -742,11 +724,107 @@
     }
 
     updateTimerDisplay() {
-      this.dom.timerDisplay.textContent = this.formatTime(this.elapsedMs);
+      this.dom.timerDisplay.textContent = this.formatTime(this.getElapsedMs());
     }
 
     // =========================================================================
-    // 7. GAMEPLAY ACTIONS: GUESSING & REVEALS
+    // 7. PROHIBITED WORD INTERCEPTION & LETTER DASH HINTS
+    // =========================================================================
+    checkProhibitedWordGuess(guess) {
+      const cleanGuess = FuzzyMatcher.normalize(guess);
+      if (!cleanGuess) return null;
+
+      const prohibited = this.currentWord.prohibited;
+      for (let i = 0; i < prohibited.length; i++) {
+        const clueWord = prohibited[i];
+        const normClue = FuzzyMatcher.normalize(clueWord);
+
+        // Exact match or slight typo on multi-char clue
+        if (cleanGuess === normClue || (normClue.length >= 4 && FuzzyMatcher.editDistance(cleanGuess, normClue) <= 1)) {
+          return {
+            index: i,
+            clueWord,
+            isAlreadyRevealed: this.revealedClues.includes(i)
+          };
+        }
+      }
+      return null;
+    }
+
+    unlockSpecificClue(index, byUser = false) {
+      if (this.revealedClues.includes(index)) return;
+      this.revealedClues.push(index);
+
+      const card = document.getElementById(`clueCard-${index}`);
+      if (card) {
+        card.classList.add('revealed', 'just-unlocked');
+        if (byUser) {
+          card.classList.add('revealed-by-user');
+          const badge = document.getElementById(`clueBadge-${index}`);
+          if (badge) badge.textContent = 'FREE REVEAL! ✓';
+        }
+        sound.playFlip();
+      }
+
+      this.updateCluesCounter();
+      this.checkAndRenderWordHint();
+    }
+
+    unlockNextClue() {
+      const totalClues = this.currentWord.prohibited.length;
+      if (this.revealedClues.length >= totalClues) {
+        this.checkAndRenderWordHint();
+        return;
+      }
+
+      for (let i = 0; i < totalClues; i++) {
+        if (!this.revealedClues.includes(i)) {
+          this.unlockSpecificClue(i, false);
+          break;
+        }
+      }
+    }
+
+    checkAndRenderWordHint() {
+      const totalClues = this.currentWord.prohibited.length;
+      if (this.revealedClues.length >= totalClues) {
+        this.renderWordHint();
+      }
+    }
+
+    renderWordHint() {
+      // Strip parenthetical content (e.g. "Carbon dioxide (CO2)" -> "Carbon dioxide")
+      const baseWord = this.currentWord.word.replace(/\([^)]*\)/g, '').trim();
+      const words = baseWord.split(/\s+/);
+
+      let html = '';
+      words.forEach((w, wIdx) => {
+        if (wIdx > 0) {
+          html += '<span class="dash-space"></span>';
+        }
+        for (let i = 0; i < w.length; i++) {
+          const char = w[i];
+          if (/[a-zA-Z0-9]/.test(char)) {
+            if (i === 0) {
+              // Starting letter revealed!
+              html += `<span class="dash-letter">${char.toUpperCase()}</span>`;
+            } else {
+              // Blank dash for remaining letters
+              html += `<span class="dash-blank">&nbsp;</span>`;
+            }
+          } else {
+            // Punctuation (apostrophes, hyphens)
+            html += `<span class="dash-punct">${char}</span>`;
+          }
+        }
+      });
+
+      this.dom.wordDashesDisplay.innerHTML = html;
+      this.dom.wordHintBox.classList.add('active');
+    }
+
+    // =========================================================================
+    // 8. GUESS HANDLING & EVALUATION
     // =========================================================================
     handleGuessSubmit() {
       const guess = this.dom.guessInput.value.trim();
@@ -754,7 +832,23 @@
 
       this.startTimerIfNeeded();
 
-      // Check against current word
+      // Feature Check 1: Did the user guess one of the forbidden Taboo clues?
+      const tabooMatch = this.checkProhibitedWordGuess(guess);
+      if (tabooMatch) {
+        if (!tabooMatch.isAlreadyRevealed) {
+          // Reveal this specific card for free! No guess wasted
+          this.unlockSpecificClue(tabooMatch.index, true);
+          sound.playClose();
+          this.showToast(`💡 Nice spot! "${tabooMatch.clueWord}" was a taboo clue — unlocked with no guess wasted!`, 'close');
+          this.addGuessChip(tabooMatch.clueWord, 'close');
+        } else {
+          this.showToast(`ℹ️ "${tabooMatch.clueWord}" is already an unlocked clue! Guess the secret target.`, 'typo');
+        }
+        this.dom.guessInput.value = '';
+        return;
+      }
+
+      // Feature Check 2: Evaluate guess against the secret target word
       const result = FuzzyMatcher.evaluateGuess(guess, this.currentWord.word);
 
       if (result.isCorrect) {
@@ -770,9 +864,12 @@
       this.isWordSolved = true;
       sound.playCorrect();
 
-      // Record summary for this word
+      // Pause timer immediately!
+      this.stopTimer();
+
+      const currentRoundNum = this.currentRoundIndex + 1;
       this.roundSummaries.push({
-        wordNumber: this.currentRoundIndex + 1,
+        wordNumber: currentRoundNum,
         targetWord: this.currentWord.word,
         rawGuess,
         cluesUsed: this.revealedClues.length,
@@ -781,27 +878,20 @@
         wasSkipped: false
       });
 
-      // Show toast
+      this.revealAllClues();
+
       if (result.isTypo) {
         this.showToast(`✓ Correct! (Typo forgiven: "${this.currentWord.word}")`, 'typo');
       } else {
         this.showToast(`✓ Brilliant! Solved: "${this.currentWord.word}"`, 'success');
       }
 
-      // Add winning chip
-      this.addGuessChip(rawGuess, 'correct');
-
-      // Check if this was the 3rd word (Final victory)
       if (this.currentRoundIndex >= 2) {
+        // Round 3 solved: complete game immediately, timer stops permanently!
         this.handleGameComplete();
       } else {
-        // Transition to next word
-        this.dom.guessInput.disabled = true;
-        this.dom.submitGuessBtn.disabled = true;
-        setTimeout(() => {
-          this.currentRoundIndex++;
-          this.loadWordForCurrentRound();
-        }, 1100);
+        // Round 1 or 2: pause timer and show intermission banner!
+        this.showRoundIntermission(true);
       }
     }
 
@@ -809,7 +899,6 @@
       sound.playWrong();
       this.guesses.push(rawGuess);
 
-      // Trigger input shake
       this.dom.inputWrapper.classList.add('shake');
       setTimeout(() => this.dom.inputWrapper.classList.remove('shake'), 500);
 
@@ -818,69 +907,145 @@
         this.showToast(result.message, 'close');
         this.addGuessChip(rawGuess, 'close');
       } else {
-        this.showToast(`Incorrect! Next taboo clue revealed.`, 'error');
         this.addGuessChip(rawGuess, 'wrong');
       }
 
-      // Auto-unlock next clue in Daily / Practice mode
-      this.unlockNextClue();
+      const totalClues = this.currentWord.prohibited.length;
+      if (this.revealedClues.length >= totalClues) {
+        // All clues already revealed; player is guessing with the letter hint
+        this.postHintGuesses = (this.postHintGuesses || 0) + 1;
+        if (this.postHintGuesses >= 2) {
+          this.handleWordOutOfGuesses();
+          return;
+        } else {
+          this.showToast(`Incorrect! 1 final attempt with the letter hint remaining.`, 'close');
+        }
+      } else {
+        this.showToast(`Incorrect! Next taboo clue revealed.`, 'error');
+        this.unlockNextClue();
+      }
+    }
+
+    handleWordOutOfGuesses() {
+      this.stopTimer();
+      this.addPenalty(15);
+      sound.playWrong();
+
+      const totalClues = this.currentWord.prohibited.length;
+      const currentRoundNum = this.currentRoundIndex + 1;
+      this.roundSummaries.push({
+        wordNumber: currentRoundNum,
+        targetWord: this.currentWord.word,
+        rawGuess: '[Out of Guesses]',
+        cluesUsed: totalClues,
+        totalClues: totalClues,
+        guessesCount: this.guesses.length,
+        wasSkipped: true
+      });
+
+      this.revealAllClues();
+      this.renderWordHint();
+
+      this.showToast(`Out of guesses! The word was "${this.currentWord.word}" (+15s)`, 'error');
+
+      if (this.currentRoundIndex >= 2) {
+        // Round 3: ends game immediately! Timer permanently stops
+        this.handleGameComplete();
+        return;
+      }
+
+      this.showRoundIntermission(false);
     }
 
     handleManualClueReveal() {
       this.startTimerIfNeeded();
-      const penalty = this.mode === 'blitz' ? 10 : 5;
-      this.addPenalty(penalty);
+      this.addPenalty(5);
       sound.playFlip();
       this.unlockNextClue();
     }
 
-    unlockNextClue() {
-      const totalClues = this.currentWord.prohibited.length;
-      if (this.revealedClues.length >= totalClues) return;
-
-      const nextIndex = this.revealedClues.length;
-      this.revealedClues.push(nextIndex);
-
-      // Animate card flip in DOM
-      const card = document.getElementById(`clueCard-${nextIndex}`);
-      if (card) {
-        card.classList.add('revealed', 'just-unlocked');
-        sound.playFlip();
-      }
-
-      this.updateCluesCounter();
+    openSkipModal() {
+      this.stopTimer(); // Pause timer while modal is open!
+      this.openModal(this.dom.skipModal);
     }
 
-    handleSkipWord() {
-      if (confirm(`Reveal answer for "${this.currentWord.word}" and move to the next word?`)) {
-        this.startTimerIfNeeded();
-        this.addPenalty(15);
+    closeSkipModal() {
+      this.closeModal(this.dom.skipModal);
+      this.startTimerIfNeeded(); // Resume timer if they cancel!
+      this.dom.guessInput.focus();
+    }
 
-        this.roundSummaries.push({
-          wordNumber: this.currentRoundIndex + 1,
-          targetWord: this.currentWord.word,
-          rawGuess: '[Skipped]',
-          cluesUsed: this.currentWord.prohibited.length,
-          totalClues: this.currentWord.prohibited.length,
-          guessesCount: this.guesses.length,
-          wasSkipped: true
-        });
+    executeSkipWord() {
+      this.closeModal(this.dom.skipModal);
+      this.stopTimer(); // Ensure timer is stopped immediately
+      this.addPenalty(15);
+      sound.playWrong();
 
-        this.showToast(`Skipped! The word was: "${this.currentWord.word}"`, 'error');
+      const totalClues = this.currentWord.prohibited.length;
+      const currentRoundNum = this.currentRoundIndex + 1;
+      this.roundSummaries.push({
+        wordNumber: currentRoundNum,
+        targetWord: this.currentWord.word,
+        rawGuess: '[Skipped]',
+        cluesUsed: totalClues,
+        totalClues: totalClues,
+        guessesCount: this.guesses.length,
+        wasSkipped: true
+      });
 
-        // Reveal all clues
-        this.revealedClues = Array.from({ length: this.currentWord.prohibited.length }, (_, i) => i);
-        this.renderClues();
+      this.revealAllClues();
+      this.renderWordHint();
 
-        setTimeout(() => {
-          if (this.currentRoundIndex >= 2) {
-            this.handleGameComplete();
-          } else {
-            this.currentRoundIndex++;
-            this.loadWordForCurrentRound();
-          }
-        }, 1200);
+      if (this.currentRoundIndex >= 2) {
+        // Round 3 skipped: end the game immediately! Timer stays stopped, no extra clicks required
+        this.handleGameComplete();
+        return;
       }
+
+      // For Round 1 or 2, show intermission banner (timer remains PAUSED!)
+      this.showRoundIntermission(false);
+      this.showToast(`Revealed: "${this.currentWord.word}" (+15s penalty)`, 'error');
+    }
+
+    showRoundIntermission(isSolved) {
+      const currentRoundNum = this.currentRoundIndex + 1;
+      const totalClues = this.currentWord.prohibited.length;
+      const cluesUsed = isSolved ? this.revealedClues.length : totalClues;
+      const guessesMade = this.guesses.length + (isSolved ? 1 : 0);
+
+      this.dom.revealedAnswerBanner.className = `revealed-answer-banner active ${isSolved ? 'solved-theme' : ''}`;
+      if (this.dom.revealedTag) {
+        this.dom.revealedTag.textContent = isSolved ? `WORD ${currentRoundNum} SOLVED ✓` : `WORD ${currentRoundNum} REVEALED`;
+      }
+      if (this.dom.revealedPenaltyNote) {
+        this.dom.revealedPenaltyNote.innerHTML = `<span class="revealed-pause-pill">⏸️ Timer Paused</span> ${!isSolved ? '<span style="color:#fde68a;">(+15s)</span>' : ''}`;
+      }
+      if (this.dom.revealedLead) {
+        this.dom.revealedLead.textContent = isSolved ? 'Nice deduction! Secret word:' : 'The secret word was:';
+      }
+      this.dom.revealedTargetWord.textContent = this.currentWord.word.toUpperCase();
+      if (this.dom.revealedStats) {
+        this.dom.revealedStats.innerHTML = `${cluesUsed}/${totalClues} clues &bull; ${guessesMade} ${guessesMade === 1 ? 'guess' : 'guesses'}`;
+      }
+      this.dom.proceedBtnText.textContent = `Continue to Word ${currentRoundNum + 1}`;
+
+      this.dom.guessForm.style.display = 'none';
+      this.dom.actionBar.style.display = 'none';
+    }
+
+    proceedAfterReveal() {
+      if (this.isGameOver) {
+        this.openModal(this.dom.victoryModal);
+        return;
+      }
+
+      this.dom.revealedAnswerBanner.classList.remove('active');
+      this.dom.guessForm.style.display = 'block';
+      this.dom.actionBar.style.display = 'flex';
+
+      this.currentRoundIndex++;
+      this.loadWordForCurrentRound();
+      this.startTimerIfNeeded(); // Resume timer for the next round
     }
 
     addGuessChip(text, type) {
@@ -905,37 +1070,61 @@
     }
 
     // =========================================================================
-    // 8. VICTORY, SCORECARD & SHARING
+    // 9. VICTORY, SCORECARD & SHARING
     // =========================================================================
     handleGameComplete() {
       this.stopTimer();
       this.isGameOver = true;
       sound.playWin();
 
-      // Launch Confetti!
       launchConfetti();
 
-      // Calculate stats
+      // Configure in-board banner for when user reviews board
+      if (this.dom.revealedAnswerBanner) {
+        this.dom.revealedAnswerBanner.className = 'revealed-answer-banner active game-over-theme';
+      }
+      if (this.dom.revealedTag) {
+        this.dom.revealedTag.textContent = 'DAILY PUZZLE COMPLETE 🏆';
+      }
+      if (this.dom.revealedPenaltyNote) {
+        this.dom.revealedPenaltyNote.innerHTML = '<span class="revealed-pause-pill">🏁 Timer Stopped</span>';
+      }
+      if (this.dom.revealedLead) {
+        this.dom.revealedLead.textContent = 'Word 3 was:';
+      }
+      this.dom.revealedTargetWord.textContent = this.currentWord.word.toUpperCase();
+      if (this.dom.revealedStats) {
+        this.dom.revealedStats.innerHTML = `All 3 words completed! Final Time: <strong>${this.formatTime(this.getElapsedMs())}</strong>`;
+      }
+      this.dom.proceedBtnText.textContent = 'View Scorecard & Share 📋';
+
+      this.dom.guessForm.style.display = 'none';
+      this.dom.actionBar.style.display = 'none';
+
+      // Update HUD stepper: all completed
+      this.dom.stepChips.forEach(chip => {
+        chip.classList.remove('active');
+        chip.classList.add('completed');
+      });
+
       const totalCluesRevealed = this.roundSummaries.reduce((sum, r) => sum + r.cluesUsed, 0);
       const totalPossibleClues = this.roundSummaries.reduce((sum, r) => sum + r.totalClues, 0);
       const totalGuesses = this.roundSummaries.reduce((sum, r) => sum + r.guessesCount, 0);
-      const wrongGuesses = totalGuesses - 3; // subtracting 3 winning guesses
+      const wrongGuesses = totalGuesses - 3;
 
-      const formattedFinalTime = this.formatTime(this.elapsedMs);
+      const finalTimeMs = this.getElapsedMs();
+      const formattedFinalTime = this.formatTime(finalTimeMs);
 
-      // Rank calculation
       let rank = 'Master Sleuth 🕵️';
       if (totalCluesRevealed <= 7) rank = 'Genius Mind 🧠⚡';
       else if (totalCluesRevealed <= 11) rank = 'Sharp Detective 🔍';
       else rank = 'Tenacious Solver 🛡️';
 
-      // Fill Victory Modal UI
       this.dom.statFinalTime.textContent = formattedFinalTime;
       this.dom.statTotalClues.textContent = `${totalCluesRevealed}/${totalPossibleClues}`;
       this.dom.statWrongGuesses.textContent = Math.max(0, wrongGuesses);
       this.dom.statRank.textContent = rank;
 
-      // Solved Words List
       this.dom.solvedWordsList.innerHTML = '';
       this.roundSummaries.forEach(r => {
         const item = document.createElement('div');
@@ -952,13 +1141,11 @@
         this.dom.solvedWordsList.appendChild(item);
       });
 
-      // Build Shareable Result Text (Wordle/Connections Style)
       const shareText = this.buildShareText(formattedFinalTime, totalCluesRevealed, totalPossibleClues);
       this.dom.shareTextPreview.textContent = shareText;
       this.currentShareText = shareText;
 
-      // Save user record
-      this.saveGameRecord(this.elapsedMs, totalCluesRevealed);
+      this.saveGameRecord(finalTimeMs, totalCluesRevealed);
 
       setTimeout(() => {
         this.openModal(this.dom.victoryModal);
@@ -966,17 +1153,13 @@
     }
 
     buildShareText(timeStr, cluesUsed, totalClues) {
-      const modeName = this.mode === 'daily' 
-        ? `Daily #${String(this.dailyPuzzleNumber).padStart(3, '0')}` 
-        : (this.mode === 'blitz' ? 'Reverse Blitz' : 'Free Play');
-
+      const puzzleNumStr = String(this.dailyPuzzleNumber).padStart(3, '0');
       let lines = [
-        `REVERSE TABOO ${modeName}`,
+        `REVERSE TABOO #${puzzleNumStr} 🕵️`,
         `⏱️ ${timeStr} | 💡 ${cluesUsed}/${totalClues} Clues`
       ];
 
       this.roundSummaries.forEach(r => {
-        // Emoji bar based on clues needed: 2 clues = 🟩, 3-4 clues = 🟨, 5+ = 🟧
         let emoji = '🟩';
         if (r.wasSkipped) emoji = '🟥';
         else if (r.cluesUsed >= 5) emoji = '🟧';
@@ -985,7 +1168,7 @@
         lines.push(`W${r.wordNumber}: ${emoji} (${r.cluesUsed} clues)`);
       });
 
-      lines.push('Play Reverse Taboo: words.json edition');
+      lines.push('Play Reverse Taboo Daily!');
       return lines.join('\n');
     }
 
@@ -995,7 +1178,6 @@
         this.dom.copiedBadge.classList.add('show');
         setTimeout(() => this.dom.copiedBadge.classList.remove('show'), 2500);
       }).catch(() => {
-        // Fallback for older browsers
         const textarea = document.createElement('textarea');
         textarea.value = this.currentShareText;
         document.body.appendChild(textarea);
@@ -1008,7 +1190,7 @@
     }
 
     // =========================================================================
-    // 9. LOCAL STORAGE PERSISTENCE & STATS
+    // 10. LOCAL STORAGE PERSISTENCE & STATS
     // =========================================================================
     saveGameRecord(timeMs, cluesUsed) {
       const stats = JSON.parse(localStorage.getItem('rt_stats') || '{"played": 0, "won": 0, "bestTime": null, "totalClues": 0, "history": []}');
@@ -1022,7 +1204,7 @@
 
       stats.history.unshift({
         date: new Date().toLocaleDateString(),
-        mode: this.mode,
+        mode: 'Daily',
         time: this.formatTime(timeMs),
         clues: cluesUsed
       });
@@ -1041,12 +1223,12 @@
       this.dom.statAvgClues.textContent = avgClues;
 
       if (stats.history.length === 0) {
-        this.dom.recentGamesList.innerHTML = '<div class="empty-state">No games recorded yet. Clear your first puzzle today!</div>';
+        this.dom.recentGamesList.innerHTML = '<div class="empty-state">No daily games recorded yet. Clear today\'s puzzle!</div>';
       } else {
         this.dom.recentGamesList.innerHTML = stats.history.map(item => `
           <div class="solved-word-item" style="margin-bottom: 0.4rem;">
             <div>
-              <strong>${item.date}</strong> &bull; <span style="text-transform: capitalize;">${item.mode}</span>
+              <strong>${item.date}</strong> &bull; <span>Daily Puzzle</span>
             </div>
             <div class="font-mono" style="color: #38bdf8;">
               ${item.time} &bull; ${item.clues} clues
@@ -1058,7 +1240,7 @@
   }
 
   // =========================================================================
-  // 10. BUILT-IN PARTICLES CONFETTI SYSTEM (Zero External Dependencies)
+  // 11. BUILT-IN PARTICLES CONFETTI SYSTEM
   // =========================================================================
   function launchConfetti() {
     const canvas = document.getElementById('confettiCanvas');
@@ -1096,8 +1278,8 @@
       particles.forEach(p => {
         p.x += p.vx;
         p.y += p.vy;
-        p.vy += 0.38; // gravity
-        p.vx *= 0.985; // drag
+        p.vy += 0.38;
+        p.vx *= 0.985;
         p.rotation += p.rotationSpeed;
 
         if (elapsed > 1800) {
@@ -1126,7 +1308,6 @@
     animationFrame = requestAnimationFrame(render);
   }
 
-  // Handle window resizing for canvas
   window.addEventListener('resize', () => {
     const canvas = document.getElementById('confettiCanvas');
     if (canvas) {
@@ -1135,7 +1316,6 @@
     }
   });
 
-  // Initialize Game on DOM ready
   document.addEventListener('DOMContentLoaded', () => {
     window.reverseTaboo = new ReverseTabooGame();
   });
