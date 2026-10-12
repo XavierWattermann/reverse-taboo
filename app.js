@@ -172,9 +172,320 @@
         .toLowerCase()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
+        .replace(/&/g, ' and ')
         .replace(/[^a-z0-9\s]/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
+    }
+
+    // Morphological stemmer that collapses word families to a shared root
+    // e.g. "pickling", "pickles", "pickled", "pickle" -> "pickl"
+    static stemWord(word) {
+      if (!word) return word;
+      let w = word.toLowerCase().trim();
+
+      // British / American & irregular root normalizations
+      const irregulars = {
+        theatre: 'theater', theatres: 'theater', theaters: 'theater',
+        colour: 'color', colours: 'color',
+        armour: 'armor', armours: 'armor',
+        flavour: 'flavor', flavours: 'flavor',
+        humour: 'humor',
+        labour: 'labor',
+        neighbour: 'neighbor', neighbours: 'neighbor',
+        favourite: 'favorite', favourites: 'favorite',
+        centre: 'center', centres: 'center',
+        metre: 'meter', metres: 'meter',
+        litre: 'liter', litres: 'liter',
+        grey: 'gray',
+        aeroplane: 'airplane', aeroplanes: 'airplane',
+        aluminium: 'aluminum',
+        moustache: 'mustache',
+        pyjamas: 'pajama', pajamas: 'pajama',
+        jewellery: 'jewelry',
+        cheque: 'check',
+        tyre: 'tire',
+        mum: 'mom', mummy: 'mommy',
+        mice: 'mouse',
+        geese: 'goose',
+        teeth: 'tooth',
+        feet: 'foot',
+        children: 'child',
+        men: 'man',
+        women: 'woman',
+        wolves: 'wolf',
+        knives: 'knife',
+        wives: 'wife',
+        lives: 'life',
+        leaves: 'leaf',
+        loaves: 'loaf',
+        halves: 'half',
+        calves: 'calf',
+        selves: 'self',
+        shelves: 'shelf',
+        thieves: 'thief',
+        cacti: 'cactus',
+        fungi: 'fungus',
+        nuclei: 'nucleus',
+        syllabi: 'syllabus',
+        octopi: 'octopus',
+        hippopotami: 'hippopotamus',
+        phenomena: 'phenomenon',
+        criteria: 'criterion',
+        dice: 'die',
+        oxen: 'ox',
+        ate: 'eat', eaten: 'eat', eating: 'eat',
+        ran: 'run', running: 'run',
+        swam: 'swim', swum: 'swim', swimming: 'swim',
+        drank: 'drink', drunk: 'drink', drinking: 'drink',
+        sang: 'sing', sung: 'sing', singing: 'sing',
+        wrote: 'write', written: 'write', writing: 'write',
+        drove: 'drive', driven: 'drive', driving: 'drive',
+        rode: 'ride', ridden: 'ride', riding: 'ride',
+        spoke: 'speak', spoken: 'speak', speaking: 'speak',
+        broke: 'break', broken: 'break', breaking: 'break',
+        chose: 'choose', chosen: 'choose', choosing: 'choose',
+        froze: 'freeze', frozen: 'freeze', freezing: 'freeze', freezer: 'freeze',
+        stole: 'steal', stolen: 'steal', stealing: 'steal',
+        woke: 'wake', woken: 'wake', waking: 'wake',
+        wore: 'wear', worn: 'wear', wearing: 'wear',
+        tore: 'tear', torn: 'tear', tearing: 'tear',
+        flew: 'fly', flown: 'fly', flying: 'fly', flight: 'fly',
+        grew: 'grow', grown: 'grow', growing: 'grow', growth: 'grow',
+        knew: 'know', known: 'know', knowing: 'know',
+        threw: 'throw', thrown: 'throw', throwing: 'throw',
+        blew: 'blow', blown: 'blow', blowing: 'blow',
+        drew: 'draw', drawn: 'draw', drawing: 'draw',
+        bought: 'buy', buying: 'buy',
+        brought: 'bring', bringing: 'bring',
+        caught: 'catch', catching: 'catch',
+        taught: 'teach', teaching: 'teach', teacher: 'teach', teachers: 'teach',
+        thought: 'think', thinking: 'think',
+        fought: 'fight', fighting: 'fight', fighter: 'fight',
+        sought: 'seek', seeking: 'seek',
+        built: 'build', building: 'build', buildings: 'build', builder: 'build',
+        sent: 'send', sending: 'send',
+        spent: 'spend', spending: 'spend',
+        lent: 'lend', lending: 'lend',
+        bent: 'bend', bending: 'bend',
+        slept: 'sleep', sleeping: 'sleep', sleepy: 'sleep',
+        kept: 'keep', keeping: 'keep', keeper: 'keep',
+        wept: 'weep', weeping: 'weep',
+        swept: 'sweep', sweeping: 'sweep',
+        felt: 'feel', feeling: 'feel', feelings: 'feel',
+        left: 'leave', leaving: 'leave',
+        lost: 'lose', losing: 'lose', loser: 'lose',
+        paid: 'pay', paying: 'pay', payment: 'pay',
+        laid: 'lay', laying: 'lay',
+        fed: 'feed', feeding: 'feed',
+        bled: 'bleed', bleeding: 'bleed', blood: 'bleed', bloody: 'bleed',
+        shot: 'shoot', shooting: 'shoot', shooter: 'shoot',
+        held: 'hold', holding: 'hold', holder: 'hold',
+        told: 'tell', telling: 'tell',
+        sold: 'sell', selling: 'sell', seller: 'sell',
+        heard: 'hear', hearing: 'hear',
+        won: 'win', winning: 'win', winner: 'win', winners: 'win',
+        sat: 'sit', sitting: 'sit',
+        dug: 'dig', digging: 'dig',
+        spun: 'spin', spinning: 'spin', spinner: 'spin',
+        hung: 'hang', hanging: 'hang',
+        stung: 'sting', stinging: 'sting',
+        swung: 'swing', swinging: 'swing'
+      };
+
+      if (irregulars[w]) {
+        w = irregulars[w];
+      }
+
+      if (w.length <= 3) return w;
+
+      // Step 1: Strip plural / tense / participle suffixes first
+      if (w.endsWith('ies') && w.length > 4) {
+        w = w.slice(0, -3) + 'y';
+      } else if (w.endsWith('ves') && w.length > 4) {
+        w = w.slice(0, -3) + 'f';
+      } else if (w.endsWith('es') && w.length > 4) {
+        if (/(ches|shes|xes|zes|ses)$/.test(w)) {
+          w = w.slice(0, -2);
+        } else {
+          w = w.slice(0, -1); // e.g. "pickles" -> "pickle", "bakes" -> "bake"
+        }
+      } else if (w.endsWith('s') && !w.endsWith('ss') && !w.endsWith('us') && !w.endsWith('is') && w.length > 3) {
+        w = w.slice(0, -1);
+      }
+
+      if (irregulars[w]) {
+        w = irregulars[w];
+      }
+
+      // Step 2: Strip derivational / inflectional suffixes (longest match first)
+      const suffixes = [
+        ['ational', 'ate'],
+        ['tional', 'tion'],
+        ['ization', 'ize'],
+        ['isation', 'ise'],
+        ['fulness', 'ful'],
+        ['ousness', 'ous'],
+        ['iveness', 'ive'],
+        ['ability', 'abl'],
+        ['ibility', 'ibl'],
+        ['icity', 'ic'],
+        ['tricity', 'tric'],
+        ['ically', 'ic'],
+        ['istic', ''],
+        ['nosis', 'not'],
+        ['notize', 'not'],
+        ['notic', 'not'],
+        ['ology', 'olog'],
+        ['ologist', 'olog'],
+        ['ologists', 'olog'],
+        ['logical', 'log'],
+        ['graphic', 'graph'],
+        ['graphy', 'graph'],
+        ['ation', ''],
+        ['ition', 'it'],
+        ['tion', 't'],
+        ['sion', 's'],
+        ['ment', ''],
+        ['ness', ''],
+        ['ship', ''],
+        ['hood', ''],
+        ['able', ''],
+        ['ible', ''],
+        ['ical', 'ic'],
+        ['ian', ''],
+        ['ism', ''],
+        ['ist', ''],
+        ['ize', ''],
+        ['ise', ''],
+        ['ify', ''],
+        ['ing', ''],
+        ['ings', ''],
+        ['ed', ''],
+        ['er', ''],
+        ['or', ''],
+        ['est', ''],
+        ['ful', ''],
+        ['less', ''],
+        ['ous', '']
+      ];
+
+      for (const [suf, rep] of suffixes) {
+        if (w.endsWith(suf) && (w.length - suf.length + rep.length) >= 3) {
+          w = w.slice(0, -suf.length) + rep;
+          break;
+        }
+      }
+
+      // Step 3: Strip adverbial -ly only on longer words (>= 6 chars) so 5-letter words
+      // like "curly", "early", "belly", "jelly" don't lose "ly"
+      if (w.endsWith('ly') && w.length >= 6) {
+        w = w.slice(0, -2);
+      }
+
+      // Step 4: Normalize trailing silent 'e' or 'y' and doubled consonants
+      if (w.endsWith('e') && w.length > 3) {
+        w = w.slice(0, -1);
+      } else if (w.endsWith('y') && w.length > 3) {
+        w = w.slice(0, -1);
+      } else if (w.endsWith('i') && w.length > 3) {
+        w = w.slice(0, -1);
+      }
+
+      // Collapse trailing doubled consonants after suffix stripping (e.g. "runn" -> "run", "shopp" -> "shop")
+      if (w.length >= 4 && w[w.length - 1] === w[w.length - 2] && !/[aeiou]/.test(w[w.length - 1])) {
+        w = w.slice(0, -1);
+      }
+
+      return w;
+    }
+
+    static stemPhrase(str) {
+      const norm = this.normalize(str);
+      if (!norm) return '';
+      return norm
+        .split(' ')
+        .map(token => this.stemWord(token))
+        .join(' ');
+    }
+
+    // Generate common morphological word-family forms for a single word
+    static expandWordFamily(word) {
+      const forms = new Set([word]);
+      if (!word || word.length < 3 || word.includes(' ')) return Array.from(forms);
+
+      // If word ends in -ing (e.g. "pickling", "baking", "running", "swimming", "cooking")
+      if (word.endsWith('ing') && word.length >= 5) {
+        const base = word.slice(0, -3);
+        forms.add(base);               // "cook"
+        forms.add(base + 's');         // "cooks"
+        forms.add(base + 'ed');        // "cooked"
+        forms.add(base + 'er');        // "cooker"
+        forms.add(base + 'ers');       // "cookers"
+        forms.add(base + 'e');         // "pickle", "bake"
+        forms.add(base + 'es');        // "pickles", "bakes"
+        forms.add(base + 'ed');        // "pickled", "baked"
+        forms.add(base + 'er');        // "baker"
+        if (base.length >= 3 && base[base.length - 1] === base[base.length - 2]) {
+          const undoubled = base.slice(0, -1); // "runn" -> "run"
+          forms.add(undoubled);
+          forms.add(undoubled + 's');
+          forms.add(undoubled + 'er');
+          forms.add(undoubled + 'ers');
+        }
+      }
+
+      // If word ends in -e (e.g. "pickle", "bake", "freeze", "dance")
+      if (word.endsWith('e') && word.length >= 4) {
+        const withoutE = word.slice(0, -1);
+        forms.add(word + 's');         // "pickles", "bakes"
+        forms.add(word + 'd');         // "pickled", "baked"
+        forms.add(word + 'r');         // "baker", "freezer", "dancer"
+        forms.add(word + 'rs');        // "bakers", "dancers"
+        forms.add(withoutE + 'ing');   // "pickling", "baking", "freezing"
+      }
+
+      // If word ends in -y (e.g. "curly", "penny", "puppy", "berry")
+      if (word.endsWith('y') && word.length >= 4 && !/[aeiou]y$/.test(word)) {
+        const withoutY = word.slice(0, -1);
+        forms.add(withoutY + 'ies');   // "pennies", "puppies", "berries"
+        forms.add(withoutY + 'ied');
+        forms.add(withoutY);           // "curl"
+        forms.add(withoutY + 's');     // "curls"
+        forms.add(withoutY + 'ed');    // "curled"
+        forms.add(withoutY + 'ing');   // "curling"
+      }
+
+      // Standard singular/plural/verb expansions
+      if (!word.endsWith('s')) {
+        forms.add(word + 's');
+        forms.add(word + 'es');
+        forms.add(word + 'ed');
+        forms.add(word + 'ing');
+        forms.add(word + 'er');
+        forms.add(word + 'y');
+      } else {
+        if (word.endsWith('ies') && word.length > 4) {
+          const base = word.slice(0, -3);
+          forms.add(base + 'y');
+          forms.add(base + 'ied');
+        } else if (word.endsWith('es') && word.length > 4) {
+          const withoutEs = word.slice(0, -2);
+          const withoutS = word.slice(0, -1);
+          forms.add(withoutEs);
+          forms.add(withoutS);         // "pickles" -> "pickle"
+          forms.add(withoutEs + 'ing'); // "pickles" -> "pickling"
+          forms.add(withoutEs + 'ed');  // "pickles" -> "pickled"
+        } else if (!word.endsWith('ss') && word.length > 3) {
+          const sing = word.slice(0, -1);
+          forms.add(sing);
+          forms.add(sing + 'ing');
+          forms.add(sing + 'ed');
+          forms.add(sing + 'y');       // "curls" -> "curly"
+        }
+      }
+
+      return Array.from(forms);
     }
 
     static generateAliases(rawWord) {
@@ -197,18 +508,81 @@
         }
       }
 
-      // 3. Strip leading articles: "The Simpsons" -> "Simpsons"
+      // 3. Strip leading articles & common prefixes: "The Simpsons" -> "Simpsons"
       for (const alias of Array.from(aliases)) {
         if (alias.startsWith('the ')) aliases.add(alias.slice(4));
         if (alias.startsWith('a ')) aliases.add(alias.slice(2));
         if (alias.startsWith('an ')) aliases.add(alias.slice(3));
+        if (alias.startsWith('mount ')) aliases.add(alias.slice(6));
+        if (alias.startsWith('mt ')) aliases.add(alias.slice(3));
+        if (alias.startsWith('st ')) aliases.add('saint ' + alias.slice(3));
+        if (alias.startsWith('saint ')) aliases.add('st ' + alias.slice(6));
       }
 
-      // 4. Common specific mappings
-      if (rawWord.includes('50 Cent')) aliases.add('fifty cent');
-      if (rawWord.includes('Martin Luther King')) aliases.add('mlk');
+      // 4. Common colloquialisms, abbreviations, and synonyms in words.json
+      const customSynonymMap = {
+        '50 cent': ['fifty cent', '50cent'],
+        'martin luther king jr': ['mlk', 'martin luther king', 'dr king'],
+        'john f kennedy': ['jfk', 'kennedy'],
+        'franklin d roosevelt': ['fdr', 'roosevelt'],
+        'air conditioner': ['ac', 'air conditioning', 'air con'],
+        'television': ['tv', 'telly'],
+        'united states of america': ['usa', 'united states', 'us', 'america'],
+        'united kingdom': ['uk', 'great britain', 'britain', 'england'],
+        'new york city': ['nyc', 'new york'],
+        'world war ii': ['ww2', 'wwii', 'world war 2', 'second world war'],
+        'world war i': ['ww1', 'wwi', 'world war 1', 'first world war'],
+        'nineteen eighty four': ['1984'],
+        'september 11 attacks': ['9 11', '911', 'september 11', 'sept 11'],
+        'dwayne johnson': ['the rock', 'rock', 'dwayne the rock johnson'],
+        'spongebob squarepants': ['spongebob', 'sponge bob'],
+        'parks and recreation': ['parks and rec'],
+        'grandmother': ['grandma', 'granny', 'nana', 'grandmom'],
+        'grandfather': ['grandpa', 'granddad', 'gramps'],
+        'mother': ['mom', 'mum', 'mama', 'mommy'],
+        'father': ['dad', 'daddy', 'papa'],
+        'firefighter': ['fireman', 'firemen', 'fire fighters'],
+        'police officer': ['police', 'cop', 'cops', 'policeman', 'policewoman'],
+        'mobile phone': ['cell phone', 'cellphone', 'phone', 'smartphone', 'smart phone'],
+        'french fries': ['fries', 'chips'],
+        'automobiles': ['cars', 'car', 'automobile', 'auto'],
+        'automobile': ['car', 'cars', 'auto'],
+        'bicycle': ['bike', 'bikes', 'biking', 'cycling'],
+        'motorcycle': ['motorbike', 'bike'],
+        'refrigerator': ['fridge', 'icebox'],
+        'microphone': ['mic', 'mike'],
+        'veterinarian': ['vet', 'vets'],
+        'doctor': ['md', 'physician', 'doc'],
+        'professor': ['prof'],
+        'mathematics': ['math', 'maths'],
+        'gymnastics': ['gymnast', 'gymnasts'],
+        'photography': ['photographer', 'photographs', 'photograph', 'photo', 'photos'],
+        'electricity': ['electric', 'electrical'],
+        'eyeglasses': ['glasses', 'spectacles'],
+        'sunglasses': ['shades', 'sun glasses'],
+        'christmas': ['xmas', 'christmastime'],
+        'halloween': ['all hallows eve'],
+        'ultraviolet': ['uv', 'uv light', 'uv rays'],
+        'deoxyribonucleic acid': ['dna'],
+        'ribonucleic acid': ['rna'],
+        'artificial intelligence': ['ai'],
+        'virtual reality': ['vr'],
+        'extraterrestrial': ['et', 'alien', 'aliens'],
+        'ufo': ['unidentified flying object'],
+        'scuba diving': ['scuba', 'diving'],
+        'pb and j': ['peanut butter and jelly', 'pbj'],
+        'macaroni and cheese': ['mac and cheese', 'mac n cheese']
+      };
 
-      // 5. Significant surname or distinctive key token
+      for (const baseAlias of Array.from(aliases)) {
+        if (customSynonymMap[baseAlias]) {
+          for (const syn of customSynonymMap[baseAlias]) {
+            aliases.add(syn);
+          }
+        }
+      }
+
+      // 5. Significant surname or distinctive key token for multi-word names/titles
       const words = normWithoutParens.split(' ');
       if (words.length >= 2 && words.length <= 4) {
         const lastWord = words[words.length - 1];
@@ -216,35 +590,32 @@
           'power', 'disaster', 'game', 'theory', 'tree', 'river', 'city', 'state', 'cup',
           'bowl', 'park', 'square', 'house', 'road', 'street', 'wall', 'room', 'size',
           'death', 'war', 'series', 'disorders', 'syndrome', 'number', 'penis', 'virus',
-          'power', 'acid', 'table', 'logo', 'band', 'film', 'food'
+          'acid', 'table', 'logo', 'band', 'film', 'food', 'system', 'machine', 'light',
+          'water', 'paper', 'card', 'cards', 'board', 'ball', 'balls', 'bear', 'bears',
+          'dog', 'dogs', 'cat', 'cats', 'fish', 'bird', 'birds', 'cake', 'pie', 'sauce'
         ];
         if (lastWord.length >= 4 && !genericExclusions.includes(lastWord)) {
           aliases.add(lastWord);
         }
         const firstWord = words[0];
-        if (['sherlock', 'napoleon', 'beyonce', 'adele', 'madonna', 'rihanna', 'elvis'].includes(firstWord)) {
+        if (['sherlock', 'napoleon', 'beyonce', 'adele', 'madonna', 'rihanna', 'elvis', 'mozart', 'beethoven', 'shakespeare', 'galileo', 'aristotle', 'socrates', 'plato', 'cleopatra', 'rembrandt', 'picasso', 'michelangelo'].includes(firstWord)) {
           aliases.add(firstWord);
         }
       }
 
-      // 6. Plural & Singular variants for clean word matching (e.g. gem <-> gems)
-      const normSingle = normWithoutParens;
-      if (normSingle.length >= 3) {
-        if (!normSingle.endsWith('s')) {
-          aliases.add(normSingle + 's');
-          if (normSingle.endsWith('ch') || normSingle.endsWith('sh') || normSingle.endsWith('x') || normSingle.endsWith('z')) {
-            aliases.add(normSingle + 'es');
-          }
-          if (normSingle.endsWith('y') && !/[aeiou]y$/.test(normSingle)) {
-            aliases.add(normSingle.slice(0, -1) + 'ies');
+      // 6. Expand morphological word families for all single-word aliases (e.g. "pickling" -> "pickle", "pickles", "pickled")
+      for (const alias of Array.from(aliases)) {
+        if (!alias.includes(' ')) {
+          for (const variant of this.expandWordFamily(alias)) {
+            aliases.add(variant);
           }
         } else {
-          if (normSingle.endsWith('ies') && normSingle.length > 4) {
-            aliases.add(normSingle.slice(0, -3) + 'y');
-          } else if (normSingle.endsWith('es') && normSingle.length > 4) {
-            aliases.add(normSingle.slice(0, -2));
-          } else if (normSingle.endsWith('s') && !normSingle.endsWith('ss')) {
-            aliases.add(normSingle.slice(0, -1));
+          // Also add plural/singular of the last word in multi-word phrases
+          const parts = alias.split(' ');
+          const last = parts[parts.length - 1];
+          const prefix = parts.slice(0, -1).join(' ');
+          for (const lastVar of this.expandWordFamily(last)) {
+            aliases.add(`${prefix} ${lastVar}`);
           }
         }
       }
@@ -278,16 +649,71 @@
       return d[len1][len2];
     }
 
+    static getSignificantStemTokens(str) {
+      const stopWords = new Set([
+        'the', 'a', 'an', 'of', 'in', 'on', 'at', 'to', 'for', 'and', 'or', 'with',
+        'by', 'from', 'as', 'your', 'my', 'our', 'their', 'his', 'her', 'its', 'one', 'ones'
+      ]);
+      const norm = this.normalize(str);
+      if (!norm) return [];
+      const rawTokens = norm.split(' ').filter(Boolean);
+      const filtered = rawTokens.filter(t => !stopWords.has(t));
+      const tokensToUse = filtered.length > 0 ? filtered : rawTokens;
+      return tokensToUse.map(t => this.stemWord(t)).filter(Boolean);
+    }
+
     static evaluateGuess(userGuess, targetWord) {
       const cleanGuess = this.normalize(userGuess);
       if (!cleanGuess) return { isCorrect: false, isTypo: false, isClose: false, message: 'Please enter a guess.' };
 
       const aliases = this.generateAliases(targetWord);
 
+      // 1. Direct alias or word-family match (includes "pickles" for "Pickling")
       if (aliases.includes(cleanGuess)) {
         return { isCorrect: true, isTypo: false, isClose: false, targetWord };
       }
 
+      // 2. Spaceless compound match (e.g. "nailbiting" <-> "nail biting", "spiderman" <-> "spider man")
+      const spacelessGuess = cleanGuess.replace(/\s+/g, '');
+      if (spacelessGuess.length >= 4) {
+        for (const alias of aliases) {
+          if (alias.replace(/\s+/g, '') === spacelessGuess) {
+            return { isCorrect: true, isTypo: false, isClose: false, targetWord };
+          }
+        }
+      }
+
+      // 3. Morphological stem match against any generated alias
+      // e.g. "pickling" (stem: "pickl") <-> "pickles" (stem: "pickl")
+      const guessStem = this.stemPhrase(cleanGuess);
+      if (guessStem && guessStem.length >= 3) {
+        for (const alias of aliases) {
+          const aliasStem = this.stemPhrase(alias);
+          if (aliasStem && aliasStem.length >= 3 && guessStem === aliasStem) {
+            return { isCorrect: true, isTypo: false, isClose: false, targetWord };
+          }
+          // Spaceless stem match (e.g. "nailbiter" -> "nailbit" vs "nail biting" -> "nail bit")
+          if (guessStem.replace(/\s+/g, '') === aliasStem.replace(/\s+/g, '') && aliasStem.replace(/\s+/g, '').length >= 5) {
+            return { isCorrect: true, isTypo: false, isClose: false, targetWord };
+          }
+        }
+      }
+
+      // 4. Multi-word token-order-independent stem matching
+      // e.g. "Nail biting" <-> "biting nails", "bite nails", "biting your nails"
+      const targetStemTokens = this.getSignificantStemTokens(targetWord.replace(/\([^)]*\)/g, ''));
+      const guessStemTokens = this.getSignificantStemTokens(cleanGuess);
+      if (targetStemTokens.length >= 2 && guessStemTokens.length >= 2) {
+        const targetSet = new Set(targetStemTokens);
+        const guessSet = new Set(guessStemTokens);
+        const allTargetPresent = Array.from(targetSet).every(t => guessSet.has(t));
+        if (allTargetPresent && guessSet.size <= targetSet.size + 1) {
+          return { isCorrect: true, isTypo: false, isClose: false, targetWord };
+        }
+      }
+
+      // 5. Fuzzy Levenshtein typo tolerance against all aliases and stems
+      const primaryTarget = this.normalize(targetWord.replace(/\([^)]*\)/g, ''));
       let bestDistance = Infinity;
       let closestAlias = '';
 
@@ -300,14 +726,14 @@
       }
 
       const aliasLen = closestAlias.length;
+      const isPrimaryAlias = (closestAlias === primaryTarget || closestAlias === this.normalize(targetWord));
       const similarity = 1 - (bestDistance / Math.max(aliasLen, cleanGuess.length));
 
       let allowedTypoDist = 0;
-      if (aliasLen >= 8) allowedTypoDist = 2;
-      else if (aliasLen >= 5) allowedTypoDist = 1;
-      else if (aliasLen >= 4 && bestDistance === 1) allowedTypoDist = 1;
+      if (isPrimaryAlias && aliasLen >= 8 && cleanGuess.length >= 6) allowedTypoDist = 2;
+      else if (aliasLen >= 4 && cleanGuess.length >= 4) allowedTypoDist = 1;
 
-      if (bestDistance <= allowedTypoDist || similarity >= 0.86) {
+      if (bestDistance <= allowedTypoDist || (isPrimaryAlias && similarity >= 0.85)) {
         return {
           isCorrect: true,
           isTypo: true,
@@ -315,6 +741,22 @@
           targetWord,
           matchedAlias: closestAlias
         };
+      }
+
+      // Also check edit distance on stems (e.g. slight typo on a morphological variant)
+      if (guessStem && guessStem.length >= 5) {
+        for (const alias of aliases) {
+          const aliasStem = this.stemPhrase(alias);
+          if (aliasStem && aliasStem.length >= 5 && this.editDistance(guessStem, aliasStem) <= 1) {
+            return {
+              isCorrect: true,
+              isTypo: true,
+              isClose: false,
+              targetWord,
+              matchedAlias: alias
+            };
+          }
+        }
       }
 
       if (bestDistance <= 3 || (aliasLen >= 8 && bestDistance <= 4)) {
@@ -730,17 +1172,45 @@
     // =========================================================================
     // 7. PROHIBITED WORD INTERCEPTION & LETTER DASH HINTS
     // =========================================================================
-    checkProhibitedWordGuess(guess) {
+    checkProhibitedWordGuess(guess, exactOnly = false) {
       const cleanGuess = FuzzyMatcher.normalize(guess);
       if (!cleanGuess) return null;
 
+      const normTarget = FuzzyMatcher.normalize(this.currentWord.word.replace(/\([^)]*\)/g, ''));
+      if (cleanGuess === normTarget) return null;
+
+      const guessStem = FuzzyMatcher.stemPhrase(cleanGuess);
       const prohibited = this.currentWord.prohibited;
+
       for (let i = 0; i < prohibited.length; i++) {
         const clueWord = prohibited[i];
         const normClue = FuzzyMatcher.normalize(clueWord);
+        if (!normClue) continue;
 
-        // Exact match or slight typo on multi-char clue
-        if (cleanGuess === normClue || (normClue.length >= 4 && FuzzyMatcher.editDistance(cleanGuess, normClue) <= 1)) {
+        // 1. Exact or direct singular/plural match of the prohibited clue
+        if (
+          cleanGuess === normClue ||
+          cleanGuess === normClue + 's' ||
+          cleanGuess + 's' === normClue
+        ) {
+          return {
+            index: i,
+            clueWord,
+            isAlreadyRevealed: this.revealedClues.includes(i)
+          };
+        }
+
+        if (exactOnly) continue;
+
+        // 2. Permissive morphological word-family / stem match or 1-char typo on prohibited clue
+        // e.g. user enters "pickles" when "pickling" is an unrevealed prohibited clue
+        const clueFamily = FuzzyMatcher.expandWordFamily(normClue);
+        const clueStem = FuzzyMatcher.stemPhrase(normClue);
+        const isStemMatch = guessStem.length >= 3 && clueStem.length >= 3 && guessStem === clueStem;
+        const isFamilyMatch = clueFamily.includes(cleanGuess);
+        const isTypoMatch = normClue.length >= 4 && FuzzyMatcher.editDistance(cleanGuess, normClue) <= 1;
+
+        if (isFamilyMatch || isStemMatch || isTypoMatch) {
           return {
             index: i,
             clueWord,
@@ -826,37 +1296,51 @@
     // =========================================================================
     // 8. GUESS HANDLING & EVALUATION
     // =========================================================================
+    handleTabooClueMatch(tabooMatch) {
+      if (!tabooMatch.isAlreadyRevealed) {
+        // Reveal this specific card for free! No guess wasted
+        this.unlockSpecificClue(tabooMatch.index, true);
+        sound.playClose();
+        this.showToast(`💡 Nice spot! "${tabooMatch.clueWord}" was a taboo clue — unlocked with no guess wasted!`, 'close');
+        this.addGuessChip(tabooMatch.clueWord, 'close');
+      } else {
+        this.showToast(`ℹ️ "${tabooMatch.clueWord}" is already an unlocked clue! Guess the secret target.`, 'typo');
+      }
+      this.dom.guessInput.value = '';
+    }
+
     handleGuessSubmit() {
       const guess = this.dom.guessInput.value.trim();
       if (!guess) return;
 
       this.startTimerIfNeeded();
 
-      // Feature Check 1: Did the user guess one of the forbidden Taboo clues?
-      const tabooMatch = this.checkProhibitedWordGuess(guess);
-      if (tabooMatch) {
-        if (!tabooMatch.isAlreadyRevealed) {
-          // Reveal this specific card for free! No guess wasted
-          this.unlockSpecificClue(tabooMatch.index, true);
-          sound.playClose();
-          this.showToast(`💡 Nice spot! "${tabooMatch.clueWord}" was a taboo clue — unlocked with no guess wasted!`, 'close');
-          this.addGuessChip(tabooMatch.clueWord, 'close');
-        } else {
-          this.showToast(`ℹ️ "${tabooMatch.clueWord}" is already an unlocked clue! Guess the secret target.`, 'typo');
-        }
-        this.dom.guessInput.value = '';
+      // Step 1: Did the user type an exact match of one of the forbidden Taboo clues?
+      const exactTabooMatch = this.checkProhibitedWordGuess(guess, true);
+      if (exactTabooMatch) {
+        this.handleTabooClueMatch(exactTabooMatch);
         return;
       }
 
-      // Feature Check 2: Evaluate guess against the secret target word
+      // Step 2: Evaluate guess against the secret target word (including permissive word-family & stem matching)
       const result = FuzzyMatcher.evaluateGuess(guess, this.currentWord.word);
 
       if (result.isCorrect) {
         this.handleCorrectGuess(result, guess);
-      } else {
-        this.handleIncorrectGuess(result, guess);
+        this.dom.guessInput.value = '';
+        return;
       }
 
+      // Step 3: Did the user guess a morphological variant or slight typo of a forbidden Taboo clue?
+      // (e.g. entering "pickles" when "pickling" is an unrevealed clue)
+      const fuzzyTabooMatch = this.checkProhibitedWordGuess(guess, false);
+      if (fuzzyTabooMatch) {
+        this.handleTabooClueMatch(fuzzyTabooMatch);
+        return;
+      }
+
+      // Step 4: Incorrect guess
+      this.handleIncorrectGuess(result, guess);
       this.dom.guessInput.value = '';
     }
 
