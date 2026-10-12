@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reverse Taboo — The Inverse Word Deduction Game</title>
+  <meta name="description" content="Guess the secret target word using only its prohibited Taboo clues. Play daily or beat the clock in Reverse Blitz mode!">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Ambient background glow elements -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+  <div class="ambient-glow glow-3"></div>
+
+  <div class="app-container">
+    <!-- Top Navigation & Controls -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>REVERSE<span>TABOO</span></h1>
+          <span class="puzzle-id" id="puzzleIdBadge">DAILY #001</span>
+        </div>
+      </div>
+
+      <!-- Mode Selector Pills -->
+      <nav class="mode-nav" aria-label="Game Modes">
+        <button class="mode-btn active" data-mode="daily" id="modeDailyBtn">
+          <span class="mode-icon">📅</span>
+          <span>Daily 3-Pack</span>
+        </button>
+        <button class="mode-btn" data-mode="blitz" id="modeBlitzBtn">
+          <span class="mode-icon">⚡</span>
+          <span>Reverse Blitz</span>
+        </button>
+        <button class="mode-btn" data-mode="practice" id="modePracticeBtn">
+          <span class="mode-icon">🎯</span>
+          <span>Free Play</span>
+        </button>
+      </nav>
+
+      <!-- Utility Actions -->
+      <div class="header-actions">
+        <button class="icon-btn" id="soundToggleBtn" title="Toggle Sound" aria-label="Toggle Sound">
+          <span id="soundIcon">🔊</span>
+        </button>
+        <button class="icon-btn" id="helpModalBtn" title="How to Play" aria-label="How to Play">
+          <span>❓</span>
+        </button>
+        <button class="icon-btn" id="statsModalBtn" title="Your Stats" aria-label="Your Statistics">
+          <span>📊</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Game Board -->
+    <main class="game-area">
+      <!-- Game HUD: Round Stepper & Running Stopwatch -->
+      <section class="game-hud" aria-label="Game Status">
+        <!-- 3-Word Progress Stepper -->
+        <div class="round-stepper" id="roundStepper">
+          <div class="step-chip active" id="stepChip-0">
+            <span class="step-num">1</span>
+            <span class="step-label">Word 1</span>
+          </div>
+          <div class="step-divider"></div>
+          <div class="step-chip" id="stepChip-1">
+            <span class="step-num">2</span>
+            <span class="step-label">Word 2</span>
+          </div>
+          <div class="step-divider"></div>
+          <div class="step-chip" id="stepChip-2">
+            <span class="step-num">3</span>
+            <span class="step-label">Word 3</span>
+          </div>
+        </div>
+
+        <!-- Live Stopwatch Timer -->
+        <div class="hud-metrics">
+          <div class="metric-card timer-card">
+            <div class="metric-label">
+              <span class="pulse-dot"></span> TIME ELAPSED
+            </div>
+            <div class="metric-value font-mono" id="timerDisplay">00:00.0</div>
+          </div>
+          <div class="metric-card clues-card">
+            <div class="metric-label">CLUES REVEALED</div>
+            <div class="metric-value font-mono">
+              <span id="revealedCluesCount">2</span><span class="metric-sub">/<span id="totalCluesCount">6</span></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Instructions Banner (dynamic per mode) -->
+      <div class="mode-banner" id="modeBanner">
+        <div class="mode-banner-icon" id="modeBannerIcon">💡</div>
+        <div class="mode-banner-text" id="modeBannerText">
+          Guess the secret target word! Wrong guesses unlock another prohibited clue.
+        </div>
+      </div>
+
+      <!-- Clues Grid Area -->
+      <section class="clues-section" aria-label="Prohibited Clues">
+        <div class="clues-header">
+          <span class="clues-title">PROHIBITED TABOO WORDS</span>
+          <span class="clues-caption" id="cluesCaption">What secret topic are these words forbidden for?</span>
+        </div>
+        <div class="clues-grid" id="cluesGrid" role="list">
+          <!-- Clue cards injected dynamically -->
+        </div>
+      </section>
+
+      <!-- Guess Input & Action Controls -->
+      <section class="guess-section">
+        <form class="guess-form" id="guessForm" autocomplete="off" onsubmit="return false;">
+          <div class="input-wrapper">
+            <span class="input-icon">🔍</span>
+            <input 
+              type="text" 
+              id="guessInput" 
+              class="guess-input" 
+              placeholder="Type your guess (e.g. Canada, Sunlight, Batman)..." 
+              autocapitalize="off" 
+              spellcheck="false"
+              autocomplete="off"
+            />
+            <button type="submit" class="guess-btn" id="submitGuessBtn">
+              <span>GUESS</span>
+              <kbd class="key-hint">↵</kbd>
+            </button>
+          </div>
+        </form>
+
+        <!-- Secondary Gameplay Controls -->
+        <div class="action-bar">
+          <button class="hint-action-btn" id="revealClueBtn">
+            <span class="btn-icon">🔓</span>
+            <span>Reveal Another Clue</span>
+            <span class="penalty-tag" id="hintPenaltyTag">+5s penalty</span>
+          </button>
+          <button class="skip-action-btn" id="skipWordBtn" title="Give up on this word and reveal it">
+            <span>Skip / Reveal Answer</span>
+          </button>
+        </div>
+
+        <!-- Toast / Micro-Feedback message area -->
+        <div class="feedback-toast" id="feedbackToast" role="status" aria-live="polite"></div>
+
+        <!-- Guess History Feed -->
+        <div class="history-container" id="historyContainer">
+          <span class="history-label">Previous Guesses:</span>
+          <div class="history-chips" id="historyChips">
+            <span class="history-placeholder">No guesses yet for this word. Take a shot!</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div class="dataset-status" id="datasetStatus">
+        <span class="status-indicator"></span> Loading taboo word library...
+      </div>
+      <div class="footer-links">
+        <span>Reverse Taboo &bull; Words from <code>words.json</code> (1,339 words)</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Victory / Game Summary Modal -->
+  <div class="modal-backdrop" id="victoryModal" aria-hidden="true" role="dialog">
+    <div class="modal-card victory-card">
+      <div class="victory-header">
+        <div class="victory-trophy">🏆</div>
+        <h2 id="victoryTitle">Round Complete!</h2>
+        <p class="victory-subtitle" id="victorySubtitle">You deduced all 3 taboo target words!</p>
+      </div>
+
+      <!-- Result Scorecard Stats -->
+      <div class="summary-stats-grid">
+        <div class="stat-box">
+          <span class="stat-label">TOTAL TIME</span>
+          <span class="stat-value font-mono" id="statFinalTime">01:24.4</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">CLUES REVEALED</span>
+          <span class="stat-value font-mono" id="statTotalClues">7/21</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">WRONG GUESSES</span>
+          <span class="stat-value font-mono" id="statWrongGuesses">3</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">ACCURACY RANK</span>
+          <span class="stat-value" id="statRank">Master Sleuth 🕵️</span>
+        </div>
+      </div>
+
+      <!-- Words Solved Breakdown -->
+      <div class="solved-words-list" id="solvedWordsList">
+        <!-- Injected dynamically -->
+      </div>
+
+      <!-- Wordle-style Shareable Grid Preview -->
+      <div class="share-box">
+        <div class="share-box-header">
+          <span>SHAREABLE RESULTS</span>
+          <span class="copied-badge" id="copiedBadge">Copied to clipboard! ✓</span>
+        </div>
+        <pre class="share-preview font-mono" id="shareTextPreview"></pre>
+        <button class="share-action-btn" id="copyShareBtn">
+          <span class="btn-icon">📋</span>
+          <span>Copy Score to Clipboard</span>
+        </button>
+      </div>
+
+      <!-- Modal Footer Buttons -->
+      <div class="modal-buttons">
+        <button class="btn-primary" id="playAgainBtn">
+          <span>Play Another (Practice)</span>
+        </button>
+        <button class="btn-secondary" id="closeVictoryModalBtn">
+          <span>Review Board</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- How to Play Modal -->
+  <div class="modal-backdrop" id="helpModal" aria-hidden="true" role="dialog">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>How to Play Reverse Taboo</h2>
+        <button class="modal-close-btn" id="closeHelpModalBtn">&times;</button>
+      </div>
+      <div class="modal-body help-content">
+        <div class="help-step">
+          <div class="step-badge">1</div>
+          <div>
+            <h3>The Premise</h3>
+            <p>In traditional Taboo, a player describes a word without saying a list of forbidden words. In <strong>Reverse Taboo</strong>, the roles are flipped: you are given the <em>prohibited words</em>, and you must deduce the secret target word!</p>
+          </div>
+        </div>
+        <div class="help-step">
+          <div class="step-badge">2</div>
+          <div>
+            <h3>Progressive Clues (Daily Mode)</h3>
+            <p>You start each word with only <strong>2 clues revealed</strong>. Every wrong guess unlocks another prohibited clue card. You can also press <em>"Reveal Another Clue"</em> at any time for a 5-second timer penalty.</p>
+          </div>
+        </div>
+        <div class="help-step">
+          <div class="step-badge">3</div>
+          <div>
+            <h3>Reverse Blitz Mode</h3>
+            <p>A fast-paced decreasing difficulty challenge! Round 1 gives you <strong>all clues</strong>, Round 2 gives you <strong>4 clues</strong>, and Round 3 gives you only <strong>2 clues</strong>. Race against the clock!</p>
+          </div>
+        </div>
+        <div class="help-step">
+          <div class="step-badge">4</div>
+          <div>
+            <h3>Typo Forgiveness</h3>
+            <p>Don't worry about minor spelling mistakes! Our intelligent fuzzy engine forgives typos, drops parenthetical suffixes (e.g. <code>"Go (game)"</code> &rarr; <code>"Go"</code>), and will nudge you if you are warm!</p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-primary full-width" id="helpGotItBtn">Got It, Let's Play!</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- User Stats Modal -->
+  <div class="modal-backdrop" id="statsModal" aria-hidden="true" role="dialog">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Your Game Statistics</h2>
+        <button class="modal-close-btn" id="closeStatsModalBtn">&times;</button>
+      </div>
+      <div class="modal-body stats-content">
+        <div class="stats-overview-grid">
+          <div class="stat-card">
+            <span class="num" id="statGamesPlayed">0</span>
+            <span class="label">Games Played</span>
+          </div>
+          <div class="stat-card">
+            <span class="num" id="statGamesWon">0</span>
+            <span class="label">Games Cleared</span>
+          </div>
+          <div class="stat-card">
+            <span class="num font-mono" id="statBestTime">--:--</span>
+            <span class="label">Best Time</span>
+          </div>
+          <div class="stat-card">
+            <span class="num" id="statAvgClues">0.0</span>
+            <span class="label">Avg Clues / Word</span>
+          </div>
+        </div>
+        <div class="stat-history-block">
+          <div class="history-title">Recent Daily Puzzles</div>
+          <div class="recent-games-list" id="recentGamesList">
+            <div class="empty-state">No games recorded yet. Clear your first puzzle today!</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary full-width" id="closeStatsBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fullscreen Canvas for Particle Confetti -->
+  <canvas id="confettiCanvas" class="confetti-canvas"></canvas>
+
+  <script src="app.js"></script>
+</body>
+</html>
