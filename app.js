@@ -52,7 +52,9 @@
     { id: 338, word: "Water", prohibited: ["food", "chemical", "oxygen", "liquid", "surface", "temperature", "drinking", "ice", "heat", "hydrogen", "earth"] }
   ];
 
-  let WORDS_POOL = [...FALLBACK_WORDS];
+  let WORDS_POOL = (typeof window !== 'undefined' && Array.isArray(window.WORDS_POOL) && window.WORDS_POOL.length > 0)
+    ? window.WORDS_POOL
+    : [...FALLBACK_WORDS];
 
   // =========================================================================
   // 2. PROCEDURAL SOUND ENGINE (Zero External Assets)
@@ -993,7 +995,18 @@
 
       this.initDom();
       this.bindEvents();
-      this.loadDataset();
+
+      // Instant startup: If words.js pre-loaded WORDS_POOL into memory, start immediately with 0ms delay!
+      if (typeof window !== 'undefined' && Array.isArray(window.WORDS_POOL) && window.WORDS_POOL.length > 50) {
+        WORDS_POOL = window.WORDS_POOL;
+        this.dom.datasetStatus.innerHTML = `
+          <span class="status-indicator"></span> 
+          Connected: <strong>${WORDS_POOL.length.toLocaleString()} words</strong> available
+        `;
+        this.startNewGame();
+      } else {
+        this.loadDataset();
+      }
     }
 
     initDom() {

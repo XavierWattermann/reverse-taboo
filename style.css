@@ -1064,13 +1064,16 @@ html, body {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(9, 13, 22, 0.85);
+  background: rgba(9, 13, 22, 0.88);
   backdrop-filter: blur(14px);
   z-index: 100;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  padding: 1.5rem 1rem;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s ease;
@@ -1088,12 +1091,15 @@ html, body {
   border: 1px solid var(--border-light);
   border-radius: 24px;
   box-shadow: var(--shadow-lg), 0 0 60px rgba(0, 0, 0, 0.7);
-  overflow: hidden;
   display: flex;
   flex-direction: column;
   transform: translateY(20px) scale(0.96);
   transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-  max-height: 90vh;
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  margin: auto;
 }
 
 .modal-backdrop.open .modal-card {
@@ -1146,6 +1152,10 @@ html, body {
   max-width: 540px;
   text-align: center;
   padding: 2rem 1.75rem 1.5rem;
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .victory-trophy {
@@ -1780,17 +1790,47 @@ html, body {
     border-radius: 12px;
   }
 
-  /* Modals */
+  /* Modals - Mobile Touch Friendly & Scrollable */
+  .modal-backdrop {
+    align-items: flex-start;
+    padding: 1rem 0.6rem 3.5rem;
+  }
+
   .modal-card {
-    padding: 1.5rem 1.15rem;
-    width: 94%;
+    padding: 1.25rem 1rem;
+    width: 100%;
+    max-height: none;
+    overflow: visible;
     border-radius: 20px;
+    margin: 0 auto;
+  }
+
+  .victory-card {
+    max-height: none;
+    overflow: visible;
+    padding: 1.35rem 1rem 1.25rem;
+    width: 100%;
+  }
+
+  .victory-trophy {
+    font-size: 2.5rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .victory-card h2 {
+    font-size: 1.45rem;
+  }
+
+  .victory-subtitle {
+    font-size: 0.85rem;
+    margin-top: 0.15rem;
   }
 
   .modal-buttons {
     flex-direction: column;
-    gap: 0.6rem;
+    gap: 0.55rem;
     width: 100%;
+    padding-bottom: 0.25rem;
   }
 
   .btn-primary, .btn-secondary, .btn-danger {
@@ -1803,15 +1843,49 @@ html, body {
 
   .summary-stats-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 0.6rem;
+    gap: 0.5rem;
+    margin: 1rem 0;
   }
 
   .stat-box {
-    padding: 0.75rem 0.5rem;
+    padding: 0.65rem 0.5rem;
+    border-radius: 12px;
+  }
+
+  .stat-box .stat-label {
+    font-size: 0.62rem;
   }
 
   .stat-box .stat-value {
-    font-size: 1.25rem;
+    font-size: 1.2rem;
+  }
+
+  .solved-words-list {
+    gap: 0.4rem;
+    margin-bottom: 1rem;
+  }
+
+  .solved-word-item {
+    padding: 0.55rem 0.75rem;
+    border-radius: 10px;
+    font-size: 0.82rem;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  .share-box {
+    padding: 0.85rem;
+    margin-bottom: 1.15rem;
+    border-radius: 12px;
+  }
+
+  .share-preview {
+    max-height: 120px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    font-size: 0.82rem;
+    padding: 0.6rem;
+    line-height: 1.35;
   }
 
   .history-container {

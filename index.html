@@ -8,7 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=6">
+  <link rel="preload" href="words.js" as="script">
+  <link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
   <!-- Ambient background glow elements -->
@@ -352,6 +353,8 @@
   <!-- Fullscreen Canvas for Particle Confetti -->
   <canvas id="confettiCanvas" class="confetti-canvas"></canvas>
 
-  <script src="app.js?v=8"></script>
+  <!-- Instant-load Word Database & Game Engine -->
+  <script src="words.js"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>
