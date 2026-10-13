@@ -571,7 +571,197 @@
         'ufo': ['unidentified flying object'],
         'scuba diving': ['scuba', 'diving'],
         'pb and j': ['peanut butter and jelly', 'pbj'],
-        'macaroni and cheese': ['mac and cheese', 'mac n cheese']
+        'macaroni and cheese': ['mac and cheese', 'mac n cheese'],
+
+        // Demonyms, nationalities, languages, and country variants
+        'greece': ['greek', 'greeks', 'hellenic'],
+        'greek': ['greece', 'greeks'],
+        'greeks': ['greece', 'greek'],
+        'france': ['french', 'frenchman', 'frenchwoman'],
+        'french': ['france'],
+        'spain': ['spanish', 'spaniard', 'spaniards'],
+        'spanish': ['spain'],
+        'italy': ['italian', 'italians'],
+        'italian': ['italy', 'italians'],
+        'germany': ['german', 'germans'],
+        'german': ['germany', 'germans'],
+        'england': ['english', 'englishman', 'britain', 'british', 'brit', 'brits'],
+        'english': ['england', 'britain', 'british'],
+        'britain': ['british', 'brit', 'brits', 'england', 'english', 'uk', 'united kingdom', 'great britain'],
+        'british': ['britain', 'great britain', 'uk', 'united kingdom', 'england', 'english'],
+        'scotland': ['scottish', 'scot', 'scots'],
+        'scottish': ['scotland', 'scots', 'scot'],
+        'ireland': ['irish', 'irishman'],
+        'irish': ['ireland'],
+        'wales': ['welsh'],
+        'welsh': ['wales'],
+        'netherlands': ['dutch', 'holland'],
+        'holland': ['netherlands', 'dutch'],
+        'dutch': ['netherlands', 'holland'],
+        'switzerland': ['swiss'],
+        'swiss': ['switzerland'],
+        'sweden': ['swedish', 'swede', 'swedes'],
+        'swedish': ['sweden', 'swedes'],
+        'norway': ['norwegian', 'norwegians'],
+        'norwegian': ['norway', 'norwegians'],
+        'denmark': ['danish', 'dane', 'danes'],
+        'danish': ['denmark', 'danes', 'dane'],
+        'finland': ['finnish', 'finn', 'finns'],
+        'finnish': ['finland', 'finns'],
+        'poland': ['polish', 'pole', 'poles'],
+        'polish': ['poland', 'poles'],
+        'portugal': ['portuguese'],
+        'portuguese': ['portugal'],
+        'russia': ['russian', 'russians', 'soviet', 'ussr'],
+        'russian': ['russia', 'russians'],
+        'china': ['chinese'],
+        'chinese': ['china'],
+        'japan': ['japanese'],
+        'japanese': ['japan'],
+        'korea': ['korean', 'koreans'],
+        'south korea': ['korean', 'koreans', 'korea'],
+        'north korea': ['korean', 'koreans', 'korea'],
+        'korean': ['korea', 'south korea'],
+        'mexico': ['mexican', 'mexicans'],
+        'mexican': ['mexico', 'mexicans'],
+        'canada': ['canadian', 'canadians'],
+        'canadian': ['canada', 'canadians'],
+        'australia': ['australian', 'australians', 'aussie', 'aussies'],
+        'australian': ['australia', 'aussie'],
+        'brazil': ['brazilian', 'brazilians'],
+        'brazilian': ['brazil', 'brazilians'],
+        'argentina': ['argentine', 'argentinian', 'argentinians'],
+        'argentinian': ['argentina', 'argentine'],
+        'egypt': ['egyptian', 'egyptians'],
+        'egyptian': ['egypt', 'egyptians'],
+        'turkey': ['turkish', 'turk', 'turks'],
+        'turkish': ['turkey', 'turks'],
+        'israel': ['israeli', 'israelis', 'jewish', 'judaism'],
+        'israeli': ['israel', 'israelis'],
+        'iran': ['iranian', 'iranians', 'persia', 'persian', 'persians'],
+        'persia': ['persian', 'persians', 'iran', 'iranian'],
+        'persian': ['persia', 'iran', 'iranian'],
+        'rome': ['roman', 'romans'],
+        'roman': ['rome', 'romans'],
+        'athens': ['athenian', 'athenians'],
+        'athenian': ['athens', 'athenians'],
+        'sparta': ['spartan', 'spartans'],
+        'spartan': ['sparta', 'spartans'],
+        'africa': ['african', 'africans'],
+        'african': ['africa', 'africans'],
+        'asia': ['asian', 'asians'],
+        'asian': ['asia', 'asians'],
+        'europe': ['european', 'europeans'],
+        'european': ['europe', 'europeans'],
+        'america': ['american', 'americans', 'usa', 'united states'],
+        'american': ['america', 'united states', 'usa'],
+        'india': ['indian', 'indians'],
+        'indian': ['india', 'indians'],
+        'cuba': ['cuban', 'cubans'],
+        'cuban': ['cuba', 'cubans'],
+        'jamaica': ['jamaican', 'jamaicans'],
+        'jamaican': ['jamaica', 'jamaicans'],
+        'iceland': ['icelandic'],
+        'icelandic': ['iceland'],
+        'austria': ['austrian', 'austrians'],
+        'austrian': ['austria'],
+        'belgium': ['belgian', 'belgians'],
+        'belgian': ['belgium'],
+        'czech republic': ['czech', 'czechia'],
+        'czechia': ['czech', 'czech republic'],
+        'czech': ['czech republic', 'czechia'],
+        'hungary': ['hungarian', 'hungarians'],
+        'hungarian': ['hungary'],
+        'ukraine': ['ukrainian', 'ukrainians'],
+        'ukrainian': ['ukraine'],
+        'vietnam': ['vietnamese'],
+        'vietnamese': ['vietnam'],
+        'thailand': ['thai'],
+        'thai': ['thailand'],
+        'philippines': ['filipino', 'filipinos', 'philippine'],
+        'filipino': ['philippines'],
+        'indonesia': ['indonesian', 'indonesians'],
+        'indonesian': ['indonesia'],
+        'pakistan': ['pakistani', 'pakistanis'],
+        'pakistani': ['pakistan'],
+        'colombia': ['colombian', 'colombians'],
+        'colombian': ['colombia'],
+        'peru': ['peruvian', 'peruvians'],
+        'peruvian': ['peru'],
+        'chile': ['chilean', 'chileans'],
+        'chilean': ['chile'],
+        'venezuela': ['venezuelan', 'venezuelans'],
+        'venezuelan': ['venezuela'],
+        'hawaii': ['hawaiian', 'hawaiians'],
+        'hawaiian': ['hawaii'],
+
+        // Religions, philosophies, and adherents
+        'christianity': ['christian', 'christians'],
+        'christian': ['christianity', 'christians'],
+        'catholicism': ['catholic', 'catholics'],
+        'catholic': ['catholicism', 'catholics'],
+        'protestantism': ['protestant', 'protestants'],
+        'protestant': ['protestantism', 'protestants'],
+        'judaism': ['jewish', 'jew', 'jews', 'judaic'],
+        'jewish': ['judaism', 'jew', 'jews'],
+        'islam': ['muslim', 'muslims', 'islamic'],
+        'muslim': ['islam', 'islamic', 'muslims'],
+        'islamic': ['islam', 'muslim'],
+        'buddhism': ['buddhist', 'buddhists', 'buddha'],
+        'buddhist': ['buddhism', 'buddha'],
+        'hinduism': ['hindu', 'hindus'],
+        'hindu': ['hinduism', 'hindus'],
+        'mormonism': ['mormon', 'mormons'],
+        'mormon': ['mormonism', 'mormons'],
+        'socialism': ['socialist', 'socialists'],
+        'socialist': ['socialism', 'socialists'],
+        'capitalism': ['capitalist', 'capitalists'],
+        'capitalist': ['capitalism', 'capitalists'],
+        'communism': ['communist', 'communists'],
+        'communist': ['communism', 'communists'],
+        'fascism': ['fascist', 'fascists'],
+        'fascist': ['fascism', 'fascists'],
+        'anarchism': ['anarchist', 'anarchists'],
+        'anarchist': ['anarchism', 'anarchists'],
+        'democracy': ['democrat', 'democratic', 'democrats'],
+
+        // Sciences, fields, and professions
+        'astronomy': ['astronomer', 'astronomers'],
+        'astronomer': ['astronomy'],
+        'astrology': ['astrologer', 'astrologers'],
+        'astrologer': ['astrology'],
+        'biology': ['biologist', 'biologists', 'biological'],
+        'biologist': ['biology'],
+        'chemistry': ['chemist', 'chemists', 'chemical', 'chemicals'],
+        'chemist': ['chemistry'],
+        'physics': ['physicist', 'physicists', 'physical'],
+        'physicist': ['physics'],
+        'geology': ['geologist', 'geologists'],
+        'geologist': ['geology'],
+        'psychology': ['psychologist', 'psychologists', 'psychological'],
+        'psychologist': ['psychology'],
+        'philosophy': ['philosopher', 'philosophers', 'philosophical'],
+        'philosopher': ['philosophy'],
+        'archaeology': ['archaeologist', 'archaeologists'],
+        'archaeologist': ['archaeology'],
+        'economics': ['economist', 'economists', 'economic'],
+        'economist': ['economics'],
+        'mathematics': ['mathematician', 'mathematicians', 'math', 'maths'],
+        'mathematician': ['mathematics', 'math'],
+        'music': ['musician', 'musicians', 'musical'],
+        'musician': ['music'],
+        'magic': ['magician', 'magicians', 'magical'],
+        'magician': ['magic'],
+        'politics': ['politician', 'politicians', 'political'],
+        'politician': ['politics'],
+        'sculpture': ['sculptor', 'sculptors'],
+        'sculptor': ['sculpture'],
+        'architecture': ['architect', 'architects'],
+        'architect': ['architecture'],
+        'dentistry': ['dentist', 'dentists'],
+        'dentist': ['dentistry'],
+        'surgery': ['surgeon', 'surgeons', 'surgical'],
+        'surgeon': ['surgery']
       };
 
       for (const baseAlias of Array.from(aliases)) {
@@ -826,6 +1016,8 @@
         cluesCaption: document.getElementById('cluesCaption'),
         cluesGrid: document.getElementById('cluesGrid'),
         wordHintBox: document.getElementById('wordHintBox'),
+        hintBadge: document.getElementById('hintBadge'),
+        hintTitle: document.getElementById('hintTitle'),
         wordDashesDisplay: document.getElementById('wordDashesDisplay'),
         guessForm: document.getElementById('guessForm'),
         guessInput: document.getElementById('guessInput'),
@@ -989,9 +1181,12 @@
     }
 
     getDailyWords() {
-      const today = new Date();
-      const anchor = new Date('2026-01-01');
-      const diffDays = Math.max(1, Math.floor((today - anchor) / (1000 * 60 * 60 * 24)));
+      const now = new Date();
+      // Rolling local midnight: use player's local calendar date
+      const localToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const localAnchor = new Date(2026, 0, 1);
+      // Calendar day count elapsed in local time (Math.round safeguards DST changes)
+      const diffDays = Math.max(1, Math.round((localToday - localAnchor) / (1000 * 60 * 60 * 24)));
       this.dailyPuzzleNumber = diffDays;
       this.dom.puzzleIdBadge.textContent = `DAILY #${String(diffDays).padStart(3, '0')}`;
 
@@ -1028,6 +1223,7 @@
       this.guesses = [];
       this.isWordSolved = false;
       this.postHintGuesses = 0;
+      this.firstLetterUnlocked = false;
 
       // Update stepper UI
       this.dom.stepChips.forEach((chip, i) => {
@@ -1045,9 +1241,9 @@
       this.dom.revealClueBtn.disabled = false;
       this.dom.guessInput.focus();
 
-      // Reset word length hint box & revealed answer banner
-      this.dom.wordHintBox.classList.remove('active');
-      this.dom.wordDashesDisplay.innerHTML = '';
+      // Always show word length dashes from the start (with starting letter hidden until all clues revealed)
+      this.renderWordHint(false);
+
       if (this.dom.revealedAnswerBanner) {
         this.dom.revealedAnswerBanner.classList.remove('active');
       }
@@ -1176,8 +1372,10 @@
       const cleanGuess = FuzzyMatcher.normalize(guess);
       if (!cleanGuess) return null;
 
-      const normTarget = FuzzyMatcher.normalize(this.currentWord.word.replace(/\([^)]*\)/g, ''));
-      if (cleanGuess === normTarget) return null;
+      // If the guess is a valid answer for the secret target word (exact, alias, demonym, or stem),
+      // never intercept it as a clue — the player solved the round!
+      const targetEval = FuzzyMatcher.evaluateGuess(guess, this.currentWord.word);
+      if (targetEval.isCorrect) return null;
 
       const guessStem = FuzzyMatcher.stemPhrase(cleanGuess);
       const prohibited = this.currentWord.prohibited;
@@ -1257,15 +1455,39 @@
 
     checkAndRenderWordHint() {
       const totalClues = this.currentWord.prohibited.length;
-      if (this.revealedClues.length >= totalClues) {
-        this.renderWordHint();
+      const allRevealed = this.revealedClues.length >= totalClues;
+      if (allRevealed && !this.firstLetterUnlocked) {
+        this.firstLetterUnlocked = true;
+        this.showToast('💡 All clues revealed! Starting letter unlocked!', 'close');
+        sound.playFlip();
       }
+      this.renderWordHint(allRevealed);
     }
 
-    renderWordHint() {
+    renderWordHint(revealFirstLetter = false) {
+      if (!this.currentWord) return;
       // Strip parenthetical content (e.g. "Carbon dioxide (CO2)" -> "Carbon dioxide")
       const baseWord = this.currentWord.word.replace(/\([^)]*\)/g, '').trim();
       const words = baseWord.split(/\s+/);
+
+      const totalLetters = words.reduce((sum, w) => sum + w.replace(/[^a-zA-Z0-9]/g, '').length, 0);
+      const wordCount = words.length;
+
+      if (this.dom.hintBadge && this.dom.hintTitle) {
+        if (revealFirstLetter) {
+          this.dom.hintBadge.textContent = 'STARTING LETTER UNLOCKED 💡';
+          this.dom.hintBadge.className = 'hint-badge unlocked-badge';
+          this.dom.hintTitle.textContent = wordCount > 1 
+            ? `${wordCount} words · ${totalLetters} letters total` 
+            : `${totalLetters} letters`;
+        } else {
+          this.dom.hintBadge.textContent = 'WORD LENGTH';
+          this.dom.hintBadge.className = 'hint-badge';
+          this.dom.hintTitle.textContent = wordCount > 1 
+            ? `${wordCount} words · ${totalLetters} letters total` 
+            : `${totalLetters} letters`;
+        }
+      }
 
       let html = '';
       words.forEach((w, wIdx) => {
@@ -1275,11 +1497,11 @@
         for (let i = 0; i < w.length; i++) {
           const char = w[i];
           if (/[a-zA-Z0-9]/.test(char)) {
-            if (i === 0) {
+            if (revealFirstLetter && i === 0) {
               // Starting letter revealed!
-              html += `<span class="dash-letter">${char.toUpperCase()}</span>`;
+              html += `<span class="dash-letter just-revealed">${char.toUpperCase()}</span>`;
             } else {
-              // Blank dash for remaining letters
+              // Blank dash for word length
               html += `<span class="dash-blank">&nbsp;</span>`;
             }
           } else {
@@ -1291,6 +1513,11 @@
 
       this.dom.wordDashesDisplay.innerHTML = html;
       this.dom.wordHintBox.classList.add('active');
+      if (revealFirstLetter) {
+        this.dom.wordHintBox.classList.add('unlocked');
+      } else {
+        this.dom.wordHintBox.classList.remove('unlocked');
+      }
     }
 
     // =========================================================================
@@ -1315,14 +1542,7 @@
 
       this.startTimerIfNeeded();
 
-      // Step 1: Did the user type an exact match of one of the forbidden Taboo clues?
-      const exactTabooMatch = this.checkProhibitedWordGuess(guess, true);
-      if (exactTabooMatch) {
-        this.handleTabooClueMatch(exactTabooMatch);
-        return;
-      }
-
-      // Step 2: Evaluate guess against the secret target word (including permissive word-family & stem matching)
+      // Step 1: Evaluate guess against the secret target word (including demonyms, word-family & typos)
       const result = FuzzyMatcher.evaluateGuess(guess, this.currentWord.word);
 
       if (result.isCorrect) {
@@ -1331,15 +1551,15 @@
         return;
       }
 
-      // Step 3: Did the user guess a morphological variant or slight typo of a forbidden Taboo clue?
-      // (e.g. entering "pickles" when "pickling" is an unrevealed clue)
-      const fuzzyTabooMatch = this.checkProhibitedWordGuess(guess, false);
-      if (fuzzyTabooMatch) {
-        this.handleTabooClueMatch(fuzzyTabooMatch);
+      // Step 2: Did the user guess one of the forbidden Taboo clues?
+      // (Free reveal! No guess wasted)
+      const tabooMatch = this.checkProhibitedWordGuess(guess, false);
+      if (tabooMatch) {
+        this.handleTabooClueMatch(tabooMatch);
         return;
       }
 
-      // Step 4: Incorrect guess
+      // Step 3: Incorrect guess
       this.handleIncorrectGuess(result, guess);
       this.dom.guessInput.value = '';
     }
@@ -1428,7 +1648,7 @@
       });
 
       this.revealAllClues();
-      this.renderWordHint();
+      this.renderWordHint(true);
 
       this.showToast(`Out of guesses! The word was "${this.currentWord.word}" (+15s)`, 'error');
 
@@ -1478,7 +1698,7 @@
       });
 
       this.revealAllClues();
-      this.renderWordHint();
+      this.renderWordHint(true);
 
       if (this.currentRoundIndex >= 2) {
         // Round 3 skipped: end the game immediately! Timer stays stopped, no extra clicks required
@@ -1801,6 +2021,7 @@
   });
 
   document.addEventListener('DOMContentLoaded', () => {
+    window.FuzzyMatcher = FuzzyMatcher;
     window.reverseTaboo = new ReverseTabooGame();
   });
 })();
